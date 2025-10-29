@@ -39,6 +39,36 @@ public:
             grid[rows-1][c] = 2;
         }
 
+        // add some internal walls to create a simple maze
+        // This creates a symmetric, blocky maze that works on small grids.
+        int c1 = cols / 3;
+        int c2 = (cols * 2) / 3;
+        int r1 = rows / 3;
+        int r2 = (rows * 2) / 3;
+
+        // vertical walls (leave openings near center)
+        for (int r = 1; r < rows-1; r++) {
+            if (r < r1 || r > r2) {
+                if (c1 > 1 && c1 < cols-1) grid[r][c1] = 2;
+                if (c2 > 1 && c2 < cols-1) grid[r][c2] = 2;
+            }
+        }
+
+        // horizontal walls (leave openings)
+        for (int c = 1; c < cols-1; c++) {
+            if (c < c1 || c > c2) {
+                if (r1 > 1 && r1 < rows-1) grid[r1][c] = 2;
+                if (r2 > 1 && r2 < rows-1) grid[r2][c] = 2;
+            }
+        }
+
+        // clear pellets on walls positions to avoid showing pellets inside walls
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (grid[r][c] == 2) grid[r][c] = 2; // keep wall
+            }
+        }
+
         // clear some pellets to make corridors
         for (int r = 2; r < rows-2; r+=2) {
             for (int c = 2; c < cols-2; c+=3) {
@@ -75,8 +105,8 @@ public:
             for (int c = 0; c < cols; c++) {
                 int gx = c; int gy = r;
                 if (grid[r][c] == 2) {
-                    // wall
-                    outputPixel(gx, gy, 80, 80, 160);
+                    // wall - bright blue
+                    outputPixel(gx, gy, 0, 0, 255);
                 } else if (grid[r][c] == 1) {
                     // pellet (very dim yellow)
                     outputPixel(gx, gy, 48, 48, 0);
