@@ -3,6 +3,7 @@
 #include "FPPPacman.h"
 #include <vector>
 #include <random>
+#include <algorithm>
 
 #include "overlays/PixelOverlay.h"
 #include "overlays/PixelOverlayModel.h"
@@ -39,62 +40,75 @@ public:
             grid[rows-1][c] = 2;
         }
 
-        // add internal walls to create a more Pac-Man-like maze
-        // We'll make symmetric vertical and horizontal walls and ensure openings are at least 3 cells wide/high.
+        // add a more complex Pac-Man-like maze while ensuring no fully enclosed regions
         int midC = cols / 2;
         int midR = rows / 2;
 
         int minGap = 3;
-        int gapW = std::max(1, std::min(minGap, cols - 6)); // ensure room for walls and borders
-        int gapH = std::max(1, std::min(minGap, rows - 8));
+        int gapW = std::max(minGap, std::min(minGap, cols - 6));
+        int gapH = std::max(minGap, std::min(minGap, rows - 8));
 
-        int gapColStart = midC - (gapW / 2);
-        int gapColEnd = gapColStart + gapW - 1;
-        int gapRowStart = midR - (gapH / 2);
-        int gapRowEnd = gapRowStart + gapH - 1;
+        int gapColStart = std::max(2, midC - (gapW / 2));
+        int gapColEnd = std::min(cols-3, gapColStart + gapW - 1);
+        int gapRowStart = std::max(2, midR - (gapH / 2));
+        int gapRowEnd = std::min(rows-3, gapRowStart + gapH - 1);
 
-        // vertical main corridors (near left and right thirds)
-        int leftWallC = 2;
-        int rightWallC = cols - 3;
-        for (int r = 1; r < rows - 1; r++) {
-            if (r < gapRowStart || r > gapRowEnd) {
-                if (leftWallC > 1 && leftWallC < cols - 1) grid[r][leftWallC] = 2;
-                if (rightWallC > 1 && rightWallC < cols - 1) grid[r][rightWallC] = 2;
+        // vertical corridors: left, center-left, center-right, right
+        std::vector<int> vcols;
+        vcols.push_back(2);
+        if (cols > 10) vcols.push_back(std::max(3, midC - 3));
+        if (cols > 12) vcols.push_back(std::min(cols-4, midC + 3));
+        vcols.push_back(cols - 3);
+
+        for (int vc : vcols) {
+            for (int r = 1; r < rows-1; r++) {
+                // leave center opening and small top/bottom openings to avoid isolating areas
+                bool inCenterGap = (r >= gapRowStart && r <= gapRowEnd);
+                bool inTopGap = (r >= 2 && r <= 2 + (gapRowStart/3));
+                bool inBottomGap = (r >= rows-3-(gapRowStart/3) && r <= rows-2);
+                if (!inCenterGap && !inTopGap && !inBottomGap) {
+                    if (vc > 1 && vc < cols-1) grid[r][vc] = 2;
+                }
             }
         }
 
-        // horizontal main corridors (near top and bottom quarters)
-        int topWallR = 3;
-        int bottomWallR = rows - 4;
-        for (int c = 1; c < cols - 1; c++) {
-            if (c < gapColStart || c > gapColEnd) {
-                if (topWallR > 1 && topWallR < rows - 1) grid[topWallR][c] = 2;
-                if (bottomWallR > 1 && bottomWallR < rows - 1) grid[bottomWallR][c] = 2;
+        // horizontal corridors: top, middle-top, middle-bottom, bottom
+        std::vector<int> hrows;
+        hrows.push_back(3);
+        if (rows > 12) hrows.push_back(std::max(4, midR - 2));
+        if (rows > 14) hrows.push_back(std::min(rows-5, midR + 2));
+        hrows.push_back(rows - 4);
+
+        for (int hr : hrows) {
+            for (int c = 1; c < cols-1; c++) {
+                bool inCenterGap = (c >= gapColStart && c <= gapColEnd);
+                bool inLeftGap = (c >= 2 && c <= 2 + (gapColStart/3));
+                bool inRightGap = (c >= cols-3-(gapColStart/3) && c <= cols-2);
+                if (!inCenterGap && !inLeftGap && !inRightGap) {
+                    if (hr > 1 && hr < rows-1) grid[hr][c] = 2;
+                }
             }
         }
 
-        // central ghost house: a small rectangle with walls and a centered door
+        // central ghost house: small rectangle with an opening
         int houseW = std::min(cols - 6, 7);
         int houseH = 3;
         int houseLeft = midC - houseW / 2;
         int houseTop = midR - 1;
         if (houseLeft < 2) houseLeft = 2;
         if (houseTop < 2) houseTop = 2;
-        // top and bottom
         for (int x = houseLeft; x < houseLeft + houseW; x++) {
             grid[houseTop][x] = 2;
             grid[houseTop + houseH - 1][x] = 2;
         }
-        // sides
         for (int y = houseTop; y < houseTop + houseH; y++) {
             grid[y][houseLeft] = 2;
             grid[y][houseLeft + houseW - 1] = 2;
         }
-        // make a centered door (opening) of width at least 3 on the top wall
         int doorW = std::min(3, houseW - 2);
         int doorStart = houseLeft + (houseW / 2) - (doorW / 2);
         for (int d = 0; d < doorW; d++) {
-            grid[houseTop][doorStart + d] = 0; // opening
+            grid[houseTop][doorStart + d] = 0;
         }
 
         // clear some pellets to make corridors
