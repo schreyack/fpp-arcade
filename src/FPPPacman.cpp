@@ -126,14 +126,35 @@ public:
         // ghosts
         ghosts.clear();
         int numGhosts = 3 + (rand() % 8); // 3-10 ghosts
+        int px = pacmanX;
+        int py = pacmanY;
         std::vector<std::pair<int, int>> ghostPositions = {
             {1, 1}, {cols-2, 1}, {1, rows-2}, {cols-2, rows-2}, {cols/2, 1}, {cols/2, rows-2}, {1, cols/2}, {rows-2, cols/2}, {cols/2, rows/2}, {cols/2-1, rows/2}
         };
+        // Filter out positions too close to Pacman (distance <= 1)
+        std::vector<std::pair<int, int>> validGhostPositions;
+        for (auto &pos : ghostPositions) {
+            int dx = abs(pos.first - px);
+            int dy = abs(pos.second - py);
+            if (dx > 1 || dy > 1) {
+                validGhostPositions.push_back(pos);
+            }
+        }
+        // If not enough valid positions, fill with random positions far from Pacman
+        while (validGhostPositions.size() < (size_t)numGhosts) {
+            int gx = rand() % cols;
+            int gy = rand() % rows;
+            int dx = abs(gx - px);
+            int dy = abs(gy - py);
+            if ((dx > 1 || dy > 1) && grid[gy][gx] != 2) {
+                validGhostPositions.push_back({gx, gy});
+            }
+        }
         for (int i = 0; i < numGhosts; ++i) {
             Ghost g;
-            int idx = i % ghostPositions.size();
-            g.x = ghostPositions[idx].first;
-            g.y = ghostPositions[idx].second;
+            int idx = i % validGhostPositions.size();
+            g.x = validGhostPositions[idx].first;
+            g.y = validGhostPositions[idx].second;
             ghosts.push_back(g);
         }
 
