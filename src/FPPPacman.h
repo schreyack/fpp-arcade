@@ -1,6 +1,7 @@
-#pragma once
+#ifndef __FPPARCADE_PACMAN_
+#define __FPPARCADE_PACMAN_
 
-#include <fpp-pch.h>
+#include "FPPArcade.h"
 
 class FPPPacman : public FPPArcadeGame {
 public:
@@ -10,3 +11,8 @@ public:
     virtual void button(const std::string &button) override;
     virtual const std::string &getName() override;
 };
+
+#endif
+
+
+
