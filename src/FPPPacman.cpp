@@ -21,10 +21,10 @@ FPPPacman::~FPPPacman() {
 class PacmanEffect : public FPPArcadeGameEffect {
 public:
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
-        // Classic Pac-Man maze layout (20x11)
-        rows = 20;
-        cols = 11;
-        static const int classicMaze[20][11] = {
+        // Scale classic Pac-Man maze to fit display
+        static const int classicRows = 20;
+        static const int classicCols = 11;
+        static const int classicMaze[classicRows][classicCols] = {
             {2,2,2,2,2,2,2,2,2,2,2},
             {2,1,1,1,2,1,1,2,1,1,2},
             {2,1,2,1,2,1,2,2,1,2,2},
@@ -46,10 +46,14 @@ public:
             {2,1,2,2,2,2,2,2,2,1,2},
             {2,2,2,2,2,2,2,2,2,2,2}
         };
+        m->getSize(cols, rows);
+        cols /= scale; rows /= scale;
+        if (cols < classicCols) cols = classicCols;
+        if (rows < classicRows) rows = classicRows;
         grid = std::vector<std::vector<int>>(rows, std::vector<int>(cols, 0));
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                grid[r][c] = classicMaze[r][c];
+                grid[r][c] = classicMaze[r % classicRows][c % classicCols];
             }
         }
         // Place pellets only in open paths (not in ghost house or walls)
@@ -58,9 +62,9 @@ public:
                 if (grid[r][c] == 0) grid[r][c] = 1;
             }
         }
-        // Place ghosts in classic positions
+        // Place ghosts near center
         ghosts.clear();
-        ghosts.push_back(Ghost{cols/2, rows/2, 0}); // Center
+        ghosts.push_back(Ghost{cols/2, rows/2, 0});
         ghosts.push_back(Ghost{cols/2-1, rows/2, 1});
         ghosts.push_back(Ghost{cols/2+1, rows/2, 2});
         pacmanX = 1;
