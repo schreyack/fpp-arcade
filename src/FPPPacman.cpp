@@ -8,7 +8,7 @@
 #include "overlays/PixelOverlayModel.h"
 #include "overlays/PixelOverlayEffects.h"
 
-//Test
+
 FPPPacman::FPPPacman(Json::Value &config) : FPPArcadeGame(config) {
     std::srand(time(NULL));
 }
