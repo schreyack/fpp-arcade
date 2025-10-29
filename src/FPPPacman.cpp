@@ -39,34 +39,62 @@ public:
             grid[rows-1][c] = 2;
         }
 
-        // add some internal walls to create a simple maze
-        // This creates a symmetric, blocky maze that works on small grids.
-        int c1 = cols / 3;
-        int c2 = (cols * 2) / 3;
-        int r1 = rows / 3;
-        int r2 = (rows * 2) / 3;
+        // add internal walls to create a more Pac-Man-like maze
+        // We'll make symmetric vertical and horizontal walls and ensure openings are at least 3 cells wide/high.
+        int midC = cols / 2;
+        int midR = rows / 2;
 
-        // vertical walls (leave openings near center)
-        for (int r = 1; r < rows-1; r++) {
-            if (r < r1 || r > r2) {
-                if (c1 > 1 && c1 < cols-1) grid[r][c1] = 2;
-                if (c2 > 1 && c2 < cols-1) grid[r][c2] = 2;
+        int minGap = 3;
+        int gapW = std::max(1, std::min(minGap, cols - 6)); // ensure room for walls and borders
+        int gapH = std::max(1, std::min(minGap, rows - 8));
+
+        int gapColStart = midC - (gapW / 2);
+        int gapColEnd = gapColStart + gapW - 1;
+        int gapRowStart = midR - (gapH / 2);
+        int gapRowEnd = gapRowStart + gapH - 1;
+
+        // vertical main corridors (near left and right thirds)
+        int leftWallC = 2;
+        int rightWallC = cols - 3;
+        for (int r = 1; r < rows - 1; r++) {
+            if (r < gapRowStart || r > gapRowEnd) {
+                if (leftWallC > 1 && leftWallC < cols - 1) grid[r][leftWallC] = 2;
+                if (rightWallC > 1 && rightWallC < cols - 1) grid[r][rightWallC] = 2;
             }
         }
 
-        // horizontal walls (leave openings)
-        for (int c = 1; c < cols-1; c++) {
-            if (c < c1 || c > c2) {
-                if (r1 > 1 && r1 < rows-1) grid[r1][c] = 2;
-                if (r2 > 1 && r2 < rows-1) grid[r2][c] = 2;
+        // horizontal main corridors (near top and bottom quarters)
+        int topWallR = 3;
+        int bottomWallR = rows - 4;
+        for (int c = 1; c < cols - 1; c++) {
+            if (c < gapColStart || c > gapColEnd) {
+                if (topWallR > 1 && topWallR < rows - 1) grid[topWallR][c] = 2;
+                if (bottomWallR > 1 && bottomWallR < rows - 1) grid[bottomWallR][c] = 2;
             }
         }
 
-        // clear pellets on walls positions to avoid showing pellets inside walls
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                if (grid[r][c] == 2) grid[r][c] = 2; // keep wall
-            }
+        // central ghost house: a small rectangle with walls and a centered door
+        int houseW = std::min(cols - 6, 7);
+        int houseH = 3;
+        int houseLeft = midC - houseW / 2;
+        int houseTop = midR - 1;
+        if (houseLeft < 2) houseLeft = 2;
+        if (houseTop < 2) houseTop = 2;
+        // top and bottom
+        for (int x = houseLeft; x < houseLeft + houseW; x++) {
+            grid[houseTop][x] = 2;
+            grid[houseTop + houseH - 1][x] = 2;
+        }
+        // sides
+        for (int y = houseTop; y < houseTop + houseH; y++) {
+            grid[y][houseLeft] = 2;
+            grid[y][houseLeft + houseW - 1] = 2;
+        }
+        // make a centered door (opening) of width at least 3 on the top wall
+        int doorW = std::min(3, houseW - 2);
+        int doorStart = houseLeft + (houseW / 2) - (doorW / 2);
+        for (int d = 0; d < doorW; d++) {
+            grid[houseTop][doorStart + d] = 0; // opening
         }
 
         // clear some pellets to make corridors
