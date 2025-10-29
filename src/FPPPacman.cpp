@@ -21,19 +21,19 @@ FPPPacman::~FPPPacman() {
 class PacmanEffect : public FPPArcadeGameEffect {
 public:
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
-        // Dynamic maze generation: inspired by classic Pac-Man, but scalable and interesting
         m->getSize(cols, rows);
         cols /= scale; rows /= scale;
         if (cols < 8) cols = 8;
         if (rows < 8) rows = 8;
 
+        // build a simple map: border walls + scattered pellets
         grid.resize(rows);
         for (int r = 0; r < rows; r++) {
             grid[r].resize(cols, 1); // 1 = pellet
         }
-        // Border walls
+        // walls on borders
         for (int r = 0; r < rows; r++) {
-            grid[r][0] = 2;
+            grid[r][0] = 2; // wall
             grid[r][cols-1] = 2;
         }
         for (int c = 0; c < cols; c++) {
@@ -41,29 +41,63 @@ public:
             grid[rows-1][c] = 2;
         }
 
-        // Add vertical corridors
-        int vSpacing = std::max(3, cols / 4);
-        for (int c = vSpacing; c < cols-1; c += vSpacing) {
+        // add a more complex Pac-Man-like maze while ensuring no fully enclosed regions
+        int midC = cols / 2;
+        int midR = rows / 2;
+
+        int minGap = 3;
+        int gapW = std::max(minGap, std::min(minGap, cols - 6));
+        int gapH = std::max(minGap, std::min(minGap, rows - 8));
+
+        int gapColStart = std::max(2, midC - (gapW / 2));
+        int gapColEnd = std::min(cols-3, gapColStart + gapW - 1);
+        int gapRowStart = std::max(2, midR - (gapH / 2));
+        int gapRowEnd = std::min(rows-3, gapRowStart + gapH - 1);
+
+        // vertical corridors: left, center-left, center-right, right
+        std::vector<int> vcols;
+        vcols.push_back(2);
+        if (cols > 10) vcols.push_back(std::max(3, midC - 3));
+        if (cols > 12) vcols.push_back(std::min(cols-4, midC + 3));
+        vcols.push_back(cols - 3);
+
+        for (int vc : vcols) {
             for (int r = 1; r < rows-1; r++) {
-                // Leave gaps every 2 rows for accessibility
-                if ((r % 4) != 1) grid[r][c] = 2;
+                // leave center opening and small top/bottom openings to avoid isolating areas
+                bool inCenterGap = (r >= gapRowStart && r <= gapRowEnd);
+                bool inTopGap = (r >= 2 && r <= 2 + (gapRowStart/3));
+                bool inBottomGap = (r >= rows-3-(gapRowStart/3) && r <= rows-2);
+                if (!inCenterGap && !inTopGap && !inBottomGap) {
+                    if (vc > 1 && vc < cols-1) grid[r][vc] = 2;
+                }
             }
         }
 
-        // Add horizontal corridors
-        int hSpacing = std::max(3, rows / 4);
-        for (int r = hSpacing; r < rows-1; r += hSpacing) {
+        // horizontal corridors: top, middle-top, middle-bottom, bottom
+        std::vector<int> hrows;
+        hrows.push_back(3);
+        if (rows > 12) hrows.push_back(std::max(4, midR - 2));
+        if (rows > 14) hrows.push_back(std::min(rows-5, midR + 2));
+        hrows.push_back(rows - 4);
+
+        for (int hr : hrows) {
             for (int c = 1; c < cols-1; c++) {
-                // Leave gaps every 2 columns for accessibility
-                if ((c % 4) != 1) grid[r][c] = 2;
+                bool inCenterGap = (c >= gapColStart && c <= gapColEnd);
+                bool inLeftGap = (c >= 2 && c <= 2 + (gapColStart/3));
+                bool inRightGap = (c >= cols-3-(gapColStart/3) && c <= cols-2);
+                if (!inCenterGap && !inLeftGap && !inRightGap) {
+                    if (hr > 1 && hr < rows-1) grid[hr][c] = 2;
+                }
             }
         }
 
-        // Central ghost house (rectangle with opening)
-        int houseW = std::max(5, cols / 4);
+        // central ghost house: small rectangle with an opening
+        int houseW = std::min(cols - 6, 7);
         int houseH = 3;
-        int houseLeft = cols/2 - houseW/2;
-        int houseTop = rows/2 - 1;
+        int houseLeft = midC - houseW / 2;
+        int houseTop = midR - 1;
+        if (houseLeft < 2) houseLeft = 2;
+        if (houseTop < 2) houseTop = 2;
         for (int x = houseLeft; x < houseLeft + houseW; x++) {
             grid[houseTop][x] = 2;
             grid[houseTop + houseH - 1][x] = 2;
@@ -72,28 +106,30 @@ public:
             grid[y][houseLeft] = 2;
             grid[y][houseLeft + houseW - 1] = 2;
         }
-        // Opening in ghost house
         int doorW = std::min(3, houseW - 2);
         int doorStart = houseLeft + (houseW / 2) - (doorW / 2);
         for (int d = 0; d < doorW; d++) {
             grid[houseTop][doorStart + d] = 0;
         }
 
-        // Ensure no unreachable areas: clear pellets in corridors
+        // clear some pellets to make corridors
         for (int r = 2; r < rows-2; r+=2) {
             for (int c = 2; c < cols-2; c+=3) {
-                if (grid[r][c] != 2) grid[r][c] = 0;
+                grid[r][c] = 0; // empty
             }
         }
 
-        // Place ghosts near center
-        ghosts.clear();
-        ghosts.push_back(Ghost{cols/2, rows/2, 0});
-        ghosts.push_back(Ghost{cols/2-1, rows/2, 1});
-        ghosts.push_back(Ghost{cols/2+1, rows/2, 2});
-        pacmanX = 1;
-        pacmanY = 1;
-        pacDir = 0;
+        pacmanX = cols/2;
+        pacmanY = rows/2;
+        pacDir = 0; // left
+
+        // ghosts
+        Ghost g;
+        g.x = 1; g.y = 1;
+        ghosts.push_back(g);
+        g.x = cols-2; g.y = 1; ghosts.push_back(g);
+        g.x = 1; g.y = rows-2; ghosts.push_back(g);
+
         timer = 150;
     }
 
