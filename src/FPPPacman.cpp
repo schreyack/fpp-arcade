@@ -266,12 +266,7 @@ public:
                 GameOn = false;
                 outputString("GAME", cols/2 - 4, rows/2-3);
                 outputString("OVER", cols/2 - 4, rows/2+1);
-                char scoreStr[32];
-                snprintf(scoreStr, sizeof(scoreStr), "SCORE: %d", pelletScore);
-                int scoreLen = strlen(scoreStr);
-                int xScore = std::max(0, std::min(cols-scoreLen, cols/2 - scoreLen/2));
-                int yScore = rows-2;
-                outputString(scoreStr, xScore, yScore);
+                outputString("SCORE", cols/2 - 4, rows/2+2);
                 model->flushOverlayBuffer();
                 return 2000;
             }
@@ -288,12 +283,7 @@ public:
             GameOn = false;
             outputString("YOU", cols/2 - 3, rows/2-3);
             outputString("WIN", cols/2 - 3, rows/2+1);
-            char scoreStr[32];
-            snprintf(scoreStr, sizeof(scoreStr), "SCORE: %d", pelletScore);
-            int scoreLen = strlen(scoreStr);
-            int xScore = std::max(0, std::min(cols-scoreLen, cols/2 - scoreLen/2));
-            int yScore = rows-2;
-            outputString(scoreStr, xScore, yScore);
+            outputString("SCORE", cols/2 - 4, rows/2+2);
             model->flushOverlayBuffer();
             return 2000;
         }
