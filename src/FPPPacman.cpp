@@ -148,6 +148,17 @@ public:
                 validGhostPositions.push_back({gx, gy});
             }
         }
+        // Place player-controlled ghost at a fixed position far from Pacman
+        playerGhost.x = cols - 2;
+        playerGhost.y = rows - 2;
+        playerGhost.dir = 0;
+        // Remove this position from validGhostPositions to avoid overlap
+        validGhostPositions.erase(
+            std::remove_if(validGhostPositions.begin(), validGhostPositions.end(),
+                [&](const std::pair<int,int>& pos) {
+                    return pos.first == playerGhost.x && pos.second == playerGhost.y;
+                }),
+            validGhostPositions.end());
         for (int i = 0; i < numGhosts; ++i) {
             Ghost g;
             int idx = i % validGhostPositions.size();
@@ -160,6 +171,8 @@ public:
     }
 
     struct Ghost { int x; int y; int dir = 0; };
+    Ghost playerGhost; // Special ghost controlled by player 2
+    int playerGhostDir = 0;
 
     const std::string &name() const override {
         static std::string NAME = "Pacman";
@@ -191,6 +204,8 @@ public:
         for (auto &gh : ghosts) {
             outputPixel(gh.x, gh.y, 255, 0, 0);
         }
+        // player-controlled ghost (draw in cyan)
+        outputPixel(playerGhost.x, playerGhost.y, 0, 255, 255);
 
         model->flushOverlayBuffer();
     }
@@ -232,6 +247,15 @@ public:
                 gh.dir = pick;
             }
         }
+        // Move player-controlled ghost
+        int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}};
+        int nx = playerGhost.x + dirs[playerGhostDir][0];
+        int ny = playerGhost.y + dirs[playerGhostDir][1];
+        if (nx >= 0 && ny >= 0 && nx < cols && ny < rows && grid[ny][nx] != 2) {
+            playerGhost.x = nx;
+            playerGhost.y = ny;
+            playerGhost.dir = playerGhostDir;
+        }
     }
 
     virtual int32_t update() override {
@@ -265,6 +289,14 @@ public:
                 return 2000;
             }
         }
+        // check collision with player-controlled ghost
+        if (playerGhost.x == pacmanX && playerGhost.y == pacmanY) {
+            GameOn = false;
+            outputString("GAME", cols/2 - 4, rows/2-3);
+            outputString("OVER", cols/2 - 4, rows/2+1);
+            model->flushOverlayBuffer();
+            return 2000;
+        }
 
         // check win: no pellets
         bool any = false;
@@ -293,17 +325,32 @@ public:
             button = butt.substr(0, pos);
             joystickName = butt.substr(pos+1);
         }
-        if (button == "Left - Pressed") {
-            pacDir = 0;
-        } else if (button == "Up - Pressed") {
-            pacDir = 1;
-        } else if (button == "Right - Pressed") {
-            pacDir = 2;
-        } else if (button == "Down - Pressed") {
-            pacDir = 3;
-        } else if (button == "Fire - Pressed") {
-            // toggle pause (don't mark GameOn false which indicates game over)
-            Paused = !Paused;
+        // Player 1 controls Pacman, Player 2 controls special ghost
+        if (joystickName.ends_with("2")) {
+            // Player 2 controls the ghost
+            if (button == "Left - Pressed") {
+                playerGhostDir = 0;
+            } else if (button == "Up - Pressed") {
+                playerGhostDir = 1;
+            } else if (button == "Right - Pressed") {
+                playerGhostDir = 2;
+            } else if (button == "Down - Pressed") {
+                playerGhostDir = 3;
+            }
+        } else {
+            // Player 1 controls Pacman
+            if (button == "Left - Pressed") {
+                pacDir = 0;
+            } else if (button == "Up - Pressed") {
+                pacDir = 1;
+            } else if (button == "Right - Pressed") {
+                pacDir = 2;
+            } else if (button == "Down - Pressed") {
+                pacDir = 3;
+            } else if (button == "Fire - Pressed") {
+                // toggle pause (don't mark GameOn false which indicates game over)
+                Paused = !Paused;
+            }
         }
     }
 
