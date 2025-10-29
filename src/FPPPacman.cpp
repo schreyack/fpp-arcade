@@ -20,7 +20,6 @@ FPPPacman::~FPPPacman() {
 }
 
 class PacmanEffect : public FPPArcadeGameEffect {
-    int pelletScore = 0;
 public:
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
         m->getSize(cols, rows);
@@ -213,7 +212,6 @@ public:
             // eat pellet
             if (grid[ny][nx] == 1) {
                 grid[ny][nx] = 0;
-                pelletScore++;
             }
         }
     }
@@ -266,7 +264,6 @@ public:
                 GameOn = false;
                 outputString("GAME", cols/2 - 4, rows/2-3);
                 outputString("OVER", cols/2 - 4, rows/2+1);
-                outputString("SCORE", cols/2 - 4, rows/2+2);
                 model->flushOverlayBuffer();
                 return 2000;
             }
@@ -283,7 +280,6 @@ public:
             GameOn = false;
             outputString("YOU", cols/2 - 3, rows/2-3);
             outputString("WIN", cols/2 - 3, rows/2+1);
-            outputString("SCORE", cols/2 - 4, rows/2+2);
             model->flushOverlayBuffer();
             return 2000;
         }
