@@ -42,6 +42,7 @@ extern "C" {
 #include "FPPPong.h"
 #include "FPPSnake.h"
 #include "FPPBreakout.h"
+#include "FPPPacman.h"
 
 
 static std::vector<std::string> BUTTONS({
@@ -356,6 +357,9 @@ public:
         }
         if (game == "Breakout") {
             return new FPPBreakout(config);
+        }
+        if (game == "Pacman") {
+            return new FPPPacman(config);
         }
         return nullptr;
     }

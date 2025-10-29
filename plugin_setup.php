@@ -60,6 +60,11 @@ function GetBreakoutOptions() {
     return html;
 }
 
+function GetPacmanOptions() {
+    var html = "Pixel Scaling: <input type='number' value='1' min='1' max='20' class='option1' data-optionname='Pixel Scaling'/>&nbsp;";
+    return html;
+}
+
 function GameChanged(sel) {
     var val = $(sel).val();
     var html = "";
@@ -71,6 +76,8 @@ function GameChanged(sel) {
         html = GetSnakeOptions();
     } else if (val == "Breakout") {
         html = GetBreakoutOptions();
+    } else if (val == "Pacman") {
+        html = GetPacmanOptions();
     }
     $(sel).parent().parent().find(".GameOptions").html(html);
 }
@@ -89,6 +96,7 @@ function AddArcade() {
     html += "<option value='Pong'>Pong</option>";
     html += "<option value='Snake'>Snake</option>";
     html += "<option value='Breakout'>Breakout</option>";
+    html += "<option value='Pacman'>Pacman</option>";
     html += "</select></td>";
     html += "<td><select class='model'>";
     html += modelOptions;
