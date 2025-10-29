@@ -61,7 +61,7 @@ function GetBreakoutOptions() {
 }
 
 function GetPacmanOptions() {
-    var html = "Pixel Scaling: <input type='number' value='1' min='1' max='20' class='option1' data-optionname='Pixel Scaling'/>&nbsp;";
+    var html = "";
     return html;
 }
 

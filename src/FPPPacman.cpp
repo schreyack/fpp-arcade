@@ -78,14 +78,15 @@ public:
                     // wall
                     outputPixel(gx, gy, 80, 80, 160);
                 } else if (grid[r][c] == 1) {
-                    // pellet (small bright dot)
-                    outputPixel(gx, gy, 200, 200, 0);
+                    // pellet (very dim yellow)
+                    outputPixel(gx, gy, 48, 48, 0);
                 }
             }
         }
 
         // pacman
-        outputPixel(pacmanX, pacmanY, 255, 220, 0);
+        // draw Pac-Man in bright yellow
+        outputPixel(pacmanX, pacmanY, 255, 255, 0);
 
         // ghosts
         for (auto &gh : ghosts) {
