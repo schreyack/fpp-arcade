@@ -21,47 +21,71 @@ FPPPacman::~FPPPacman() {
 class PacmanEffect : public FPPArcadeGameEffect {
 public:
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
-        // Scale classic Pac-Man maze to fit display
-        static const int classicRows = 20;
-        static const int classicCols = 11;
-        static const int classicMaze[classicRows][classicCols] = {
-            {2,2,2,2,2,2,2,2,2,2,2},
-            {2,1,1,1,2,1,1,2,1,1,2},
-            {2,1,2,1,2,1,2,2,1,2,2},
-            {2,1,2,1,1,1,1,1,1,1,2},
-            {2,1,2,2,2,2,2,2,2,1,2},
-            {2,1,1,1,1,1,1,1,2,1,2},
-            {2,2,2,2,2,2,2,1,2,1,2},
-            {2,1,1,1,1,1,2,1,2,1,2},
-            {2,1,2,2,2,1,2,1,2,1,2},
-            {2,1,2,1,1,1,2,1,2,1,2},
-            {2,1,2,1,2,2,2,1,2,1,2},
-            {2,1,2,1,1,1,1,1,2,1,2},
-            {2,1,2,2,2,2,2,2,2,1,2},
-            {2,1,1,1,1,1,1,1,1,1,2},
-            {2,2,2,2,2,2,2,2,2,2,2},
-            {2,1,1,1,2,1,1,2,1,1,2},
-            {2,1,2,1,2,1,2,2,1,2,2},
-            {2,1,2,1,1,1,1,1,1,1,2},
-            {2,1,2,2,2,2,2,2,2,1,2},
-            {2,2,2,2,2,2,2,2,2,2,2}
-        };
+        // Dynamic maze generation: inspired by classic Pac-Man, but scalable and interesting
         m->getSize(cols, rows);
         cols /= scale; rows /= scale;
-        if (cols < classicCols) cols = classicCols;
-        if (rows < classicRows) rows = classicRows;
-        grid = std::vector<std::vector<int>>(rows, std::vector<int>(cols, 0));
+        if (cols < 8) cols = 8;
+        if (rows < 8) rows = 8;
+
+        grid.resize(rows);
         for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                grid[r][c] = classicMaze[r % classicRows][c % classicCols];
+            grid[r].resize(cols, 1); // 1 = pellet
+        }
+        // Border walls
+        for (int r = 0; r < rows; r++) {
+            grid[r][0] = 2;
+            grid[r][cols-1] = 2;
+        }
+        for (int c = 0; c < cols; c++) {
+            grid[0][c] = 2;
+            grid[rows-1][c] = 2;
+        }
+
+        // Add vertical corridors
+        int vSpacing = std::max(3, cols / 4);
+        for (int c = vSpacing; c < cols-1; c += vSpacing) {
+            for (int r = 1; r < rows-1; r++) {
+                // Leave gaps every 2 rows for accessibility
+                if ((r % 4) != 1) grid[r][c] = 2;
             }
         }
-        // Place pellets only in open paths (not in ghost house or walls)
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                if (grid[r][c] == 0) grid[r][c] = 1;
+
+        // Add horizontal corridors
+        int hSpacing = std::max(3, rows / 4);
+        for (int r = hSpacing; r < rows-1; r += hSpacing) {
+            for (int c = 1; c < cols-1; c++) {
+                // Leave gaps every 2 columns for accessibility
+                if ((c % 4) != 1) grid[r][c] = 2;
             }
         }
+
+        // Central ghost house (rectangle with opening)
+        int houseW = std::max(5, cols / 4);
+        int houseH = 3;
+        int houseLeft = cols/2 - houseW/2;
+        int houseTop = rows/2 - 1;
+        for (int x = houseLeft; x < houseLeft + houseW; x++) {
+            grid[houseTop][x] = 2;
+            grid[houseTop + houseH - 1][x] = 2;
+        }
+        for (int y = houseTop; y < houseTop + houseH; y++) {
+            grid[y][houseLeft] = 2;
+            grid[y][houseLeft + houseW - 1] = 2;
+        }
+        // Opening in ghost house
+        int doorW = std::min(3, houseW - 2);
+        int doorStart = houseLeft + (houseW / 2) - (doorW / 2);
+        for (int d = 0; d < doorW; d++) {
+            grid[houseTop][doorStart + d] = 0;
+        }
+
+        // Ensure no unreachable areas: clear pellets in corridors
+        for (int r = 2; r < rows-2; r+=2) {
+            for (int c = 2; c < cols-2; c+=3) {
+                if (grid[r][c] != 2) grid[r][c] = 0;
+            }
+        }
+
         // Place ghosts near center
         ghosts.clear();
         ghosts.push_back(Ghost{cols/2, rows/2, 0});
