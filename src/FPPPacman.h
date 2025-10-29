@@ -3,6 +3,7 @@
 
 #include "FPPArcade.h"
 
+
 class FPPPacman : public FPPArcadeGame {
 public:
     FPPPacman(Json::Value &config);
