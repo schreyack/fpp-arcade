@@ -124,18 +124,11 @@ public:
         pacDir = 0; // left
 
         // ghosts
-        ghosts.clear();
-        int numGhosts = 3 + (rand() % 8); // 3-10 ghosts
-        std::vector<std::pair<int, int>> ghostPositions = {
-            {1, 1}, {cols-2, 1}, {1, rows-2}, {cols-2, rows-2}, {cols/2, 1}, {cols/2, rows-2}, {1, cols/2}, {rows-2, cols/2}, {cols/2, rows/2}, {cols/2-1, rows/2}
-        };
-        for (int i = 0; i < numGhosts; ++i) {
-            Ghost g;
-            int idx = i % ghostPositions.size();
-            g.x = ghostPositions[idx].first;
-            g.y = ghostPositions[idx].second;
-            ghosts.push_back(g);
-        }
+        Ghost g;
+        g.x = 1; g.y = 1;
+        ghosts.push_back(g);
+        g.x = cols-2; g.y = 1; ghosts.push_back(g);
+        g.x = 1; g.y = rows-2; ghosts.push_back(g);
 
         timer = 150;
     }
