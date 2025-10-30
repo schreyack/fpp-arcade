@@ -39,54 +39,52 @@ public:
             grid[rows-1][c] = 2;
         }
 
-        // NEW MAZE GENERATION FOR LARGE CHARACTERS
+        // --- NEW MAZE: Explicit room and corridor layout ---
         // Clear grid
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                grid[r][c] = 0;
+                grid[r][c] = 2; // wall everywhere
             }
         }
-        // Parameters for character size
-        int corridorW = pacRadius*2+1;
-        int corridorH = pacRadius*2+1;
-        int roomW = corridorW*2;
-        int roomH = corridorH*2;
-        // Place horizontal corridors
-        for (int r = corridorH; r < rows-corridorH; r += corridorH+roomH) {
-            for (int c = 0; c < cols; c++) {
-                for (int w = 0; w < corridorW; w++) {
-                    if (r+w < rows) grid[r+w][c] = 0;
+        int roomW = pacRadius*4; // room width
+        int roomH = pacRadius*4; // room height
+        int doorW = pacRadius*2+1; // door width
+        int doorH = pacRadius*2+1; // door height
+        // Place rooms in a grid
+        for (int ry = 0; ry < rows; ry += roomH+doorH) {
+            for (int rx = 0; rx < cols; rx += roomW+doorW) {
+                // Carve out room
+                for (int r = ry; r < ry+roomH && r < rows; r++) {
+                    for (int c = rx; c < rx+roomW && c < cols; c++) {
+                        grid[r][c] = 0;
+                    }
                 }
-            }
-        }
-        // Place vertical corridors
-        for (int c = corridorW; c < cols-corridorW; c += corridorW+roomW) {
-            for (int r = 0; r < rows; r++) {
-                for (int w = 0; w < corridorW; w++) {
-                    if (c+w < cols) grid[r][c+w] = 0;
+                // Carve out doors to right
+                if (rx+roomW < cols) {
+                    int doorY = ry+roomH/2-doorH/2;
+                    for (int r = doorY; r < doorY+doorH && r < rows; r++) {
+                        for (int c = rx+roomW; c < rx+roomW+doorW && c < cols; c++) {
+                            grid[r][c] = 0;
+                        }
+                    }
                 }
-            }
-        }
-        // Place rooms at intersections
-        for (int r = corridorH; r < rows-corridorH; r += corridorH+roomH) {
-            for (int c = corridorW; c < cols-corridorW; c += corridorW+roomW) {
-                for (int dr = 0; dr < roomH; dr++) {
-                    for (int dc = 0; dc < roomW; dc++) {
-                        if (r+dr < rows && c+dc < cols) grid[r+dr][c+dc] = 0;
+                // Carve out doors downward
+                if (ry+roomH < rows) {
+                    int doorX = rx+roomW/2-doorW/2;
+                    for (int r = ry+roomH; r < ry+roomH+doorH && r < rows; r++) {
+                        for (int c = doorX; c < doorX+doorW && c < cols; c++) {
+                            grid[r][c] = 0;
+                        }
                     }
                 }
             }
         }
-        // Place walls everywhere else
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                if (grid[r][c] != 0) grid[r][c] = 2;
-            }
-        }
-        // Place pellets in open areas, spaced for large Pacman
-        for (int r = pacRadius; r < rows-pacRadius; r += corridorH) {
-            for (int c = pacRadius; c < cols-pacRadius; c += corridorW) {
-                if (grid[r][c] == 0) grid[r][c] = 1;
+        // Place pellets in room centers
+        for (int ry = 0; ry < rows; ry += roomH+doorH) {
+            for (int rx = 0; rx < cols; rx += roomW+doorW) {
+                int pr = ry+roomH/2;
+                int pc = rx+roomW/2;
+                if (pr < rows && pc < cols) grid[pr][pc] = 1;
             }
         }
 
