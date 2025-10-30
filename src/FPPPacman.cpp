@@ -172,12 +172,13 @@ public:
             Ghost g;
             // Random position, but at least 8 units away from Pacman (Euclidean distance), not on walls, and not too close to other ghosts
             int attempts = 0;
+            bool tooClose = false;
             do {
                 g.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
                 g.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
                 attempts++;
                 // Check distance from existing ghosts
-                bool tooClose = false;
+                tooClose = false;
                 for (size_t j = 0; j < ghosts.size(); j++) {
                     int dx = g.x - ghosts[j].x;
                     int dy = g.y - ghosts[j].y;
@@ -194,12 +195,13 @@ public:
         
         // Place player-controlled ghost at random location (avoiding Pacman and walls and other ghosts)
         int attempts = 0;
+        bool tooClose = false;
         do {
             playerGhost.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
             playerGhost.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
             attempts++;
             // Check distance from existing ghosts
-            bool tooClose = false;
+            tooClose = false;
             for (size_t j = 0; j < ghosts.size(); j++) {
                 int dx = playerGhost.x - ghosts[j].x;
                 int dy = playerGhost.y - ghosts[j].y;
