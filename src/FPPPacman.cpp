@@ -18,6 +18,8 @@ FPPPacman::~FPPPacman() {
 
 class PacmanEffect : public FPPArcadeGameEffect {
 public:
+    struct Ghost { int x; int y; int dir = 0; };
+    
     // Member variables declared first
     int rows = 20;
     int cols = 11;
@@ -31,7 +33,6 @@ public:
     int playerGhostDir = 0;
     std::vector<std::vector<int>> grid; // 0 empty, 1 pellet, 2 wall
     std::vector<Ghost> ghosts;
-    struct Ghost { int x; int y; int dir = 0; };
     Ghost playerGhost; // Special ghost controlled by player 2
     bool GameOn = true;
     bool Paused = false;
@@ -172,6 +173,18 @@ public:
         return NAME;
     }
 
+    bool canMoveTo(int x, int y, int radius) {
+        // Check bounding box for wall collisions
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                int nx = x+dx, ny = y+dy;
+                if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return false;
+                if ((dx*dx + dy*dy <= radius*radius) && grid[ny][nx] == 2) return false;
+            }
+        }
+        return true;
+    }
+
     void drawPacman(int x, int y, int dir) {
         int r = 2; // radius in grid units
         // Draw Pacman body and mouth
@@ -221,11 +234,11 @@ public:
             }
         }
         // Eyes (white background)
-        outputPixel(x-1, y-2, 255,255,255);
-        outputPixel(x+0, y-2, 255,255,255);
-        // Pupils (black dots)
-        outputPixel(x-1, y-2, 0,0,0);
-        outputPixel(x+0, y-2, 0,0,0);
+        outputPixel(x-1, y-2, 255, 255, 255);
+        outputPixel(x+0, y-2, 255, 255, 255);
+        // Pupils (black dots) - smaller, offset inward
+        outputPixel(x-1, y-2, 0, 0, 0);
+        outputPixel(x+0, y-2, 0, 0, 0);
     }
 
     void CopyToModel() {
@@ -239,8 +252,8 @@ public:
                     outputPixel(gx, gy, 0, 0, 255);
                 } else if (grid[r][c] == 1) {
                     // pellet (very dim yellow)
-                    // Only draw pellet if Pacman is not overlapping
-                    if (!(abs(pacmanX-gx)<=1 && abs(pacmanY-gy)<=1))
+                    // Only draw pellet if Pacman is not overlapping (within pacRadius)
+                    if (!(abs(pacmanX-c) <= pacRadius && abs(pacmanY-r) <= pacRadius))
                         outputPixel(gx, gy, 48, 48, 0);
                 }
             }
@@ -312,11 +325,6 @@ public:
             playerGhost.dir = playerGhostDir;
         }
     }
-
-    // Update pellet spacing and wall gap for larger sprites
-    int pacRadius = 2; // Pacman radius
-    int ghostSize = 4; // Ghost width/height
-    int minWallGap = std::max(5, pacRadius*2+1); // Minimum gap between walls
 
     bool checkCollision(int ax, int ay, int ar, int bx, int by, int br) {
         // Simple bounding box overlap
