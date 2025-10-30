@@ -62,22 +62,31 @@ public:
             }
         }
         
-        // Place ghosts in random locations
+        // Place ghosts in random locations (avoiding Pacman)
         ghosts.clear();
         int numGhosts = 3 + (rand() % 4);
         
         for (int i = 0; i < numGhosts; i++) {
             Ghost g;
-            // Random position
-            g.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
-            g.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
+            // Random position, but at least 5 units away from Pacman
+            int attempts = 0;
+            do {
+                g.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
+                g.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
+                attempts++;
+            } while ((abs(g.x - pacmanX) + abs(g.y - pacmanY) < 5) && attempts < 20);
+            
             g.dir = rand() % 4;
             ghosts.push_back(g);
         }
         
-        // Place player-controlled ghost at random location
-        playerGhost.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
-        playerGhost.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
+        // Place player-controlled ghost at random location (avoiding Pacman)
+        int attempts = 0;
+        do {
+            playerGhost.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
+            playerGhost.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
+            attempts++;
+        } while ((abs(playerGhost.x - pacmanX) + abs(playerGhost.y - pacmanY) < 5) && attempts < 20);
         playerGhost.dir = 0;
 
         timer = 150;
@@ -166,10 +175,18 @@ public:
                     // wall - bright blue
                     outputPixel(gx, gy, 0, 0, 255);
                 } else if (grid[r][c] == 1) {
-                    // pellet (very dim yellow)
+                    // pellet - draw as a small circle (radius 1 pixel from center)
                     // Only draw pellet if Pacman is not overlapping (within pacRadius)
-                    if (!(abs(pacmanX-c) <= pacRadius && abs(pacmanY-r) <= pacRadius))
-                        outputPixel(gx, gy, 48, 48, 0);
+                    if (!(abs(pacmanX-c) <= pacRadius && abs(pacmanY-r) <= pacRadius)) {
+                        // Draw pellet as small filled circle
+                        for (int dx = -1; dx <= 1; dx++) {
+                            for (int dy = -1; dy <= 1; dy++) {
+                                if (dx*dx + dy*dy <= 1) {
+                                    outputPixel(gx+dx, gy+dy, 255, 200, 0);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
