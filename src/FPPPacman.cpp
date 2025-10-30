@@ -75,33 +75,71 @@ public:
         int roomEndX = roomStartX + roomWidth - 1;
         int roomEndY = roomStartY + roomHeight - 1;
         
+        // Randomly choose which wall gets the doorway (0=top, 1=bottom, 2=left, 3=right)
+        int doorWall = rand() % 4;
+        
         // Create walls (2 units thick)
         // Top wall
         for (int r = roomStartY; r < roomStartY + wallThickness; r++) {
             for (int c = roomStartX; c <= roomEndX; c++) {
-                if (r < rows && c < cols) grid[r][c] = 2;
+                if (r < rows && c < cols) {
+                    if (doorWall == 0) { // Top wall has doorway
+                        int doorStart = roomStartX + roomWidth/2 - 2; // 4 units wide door
+                        int doorEnd = roomStartX + roomWidth/2 + 2;
+                        if (c < doorStart || c > doorEnd) {
+                            grid[r][c] = 2;
+                        }
+                    } else {
+                        grid[r][c] = 2; // Solid wall
+                    }
+                }
             }
         }
         // Bottom wall
         for (int r = roomEndY - wallThickness + 1; r <= roomEndY; r++) {
             for (int c = roomStartX; c <= roomEndX; c++) {
-                if (r >= 0 && c < cols) grid[r][c] = 2;
+                if (r >= 0 && c < cols) {
+                    if (doorWall == 1) { // Bottom wall has doorway
+                        int doorStart = roomStartX + roomWidth/2 - 2; // 4 units wide door
+                        int doorEnd = roomStartX + roomWidth/2 + 2;
+                        if (c < doorStart || c > doorEnd) {
+                            grid[r][c] = 2;
+                        }
+                    } else {
+                        grid[r][c] = 2; // Solid wall
+                    }
+                }
             }
         }
         // Left wall
         for (int c = roomStartX; c < roomStartX + wallThickness; c++) {
             for (int r = roomStartY; r <= roomEndY; r++) {
-                if (c < cols && r < rows) grid[r][c] = 2;
+                if (c < cols && r < rows) {
+                    if (doorWall == 2) { // Left wall has doorway
+                        int doorStart = roomStartY + roomHeight/2 - 2; // 4 units wide door
+                        int doorEnd = roomStartY + roomHeight/2 + 2;
+                        if (r < doorStart || r > doorEnd) {
+                            grid[r][c] = 2;
+                        }
+                    } else {
+                        grid[r][c] = 2; // Solid wall
+                    }
+                }
             }
         }
-        // Right wall with doorway
+        // Right wall
         for (int c = roomEndX - wallThickness + 1; c <= roomEndX; c++) {
             for (int r = roomStartY; r <= roomEndY; r++) {
-                // Leave middle section open for doorway (wide enough for Pacman)
-                int doorStart = roomStartY + roomHeight/2 - 2; // 4 units wide door
-                int doorEnd = roomStartY + roomHeight/2 + 2;
-                if (r < doorStart || r > doorEnd) {
-                    if (c >= 0 && r < rows) grid[r][c] = 2;
+                if (c >= 0 && r < rows) {
+                    if (doorWall == 3) { // Right wall has doorway
+                        int doorStart = roomStartY + roomHeight/2 - 2; // 4 units wide door
+                        int doorEnd = roomStartY + roomHeight/2 + 2;
+                        if (r < doorStart || r > doorEnd) {
+                            grid[r][c] = 2;
+                        }
+                    } else {
+                        grid[r][c] = 2; // Solid wall
+                    }
                 }
             }
         }
@@ -247,10 +285,10 @@ public:
             }
         }
         
-        // Draw pellets in a grid pattern (if not eaten)
+        // Draw pellets in a grid pattern (if not eaten and actually exist)
         for (int r = 0; r < rows; r += 2) {
             for (int c = 0; c < cols; c += 2) {
-                if (eatenPellets.find({c, r}) == eatenPellets.end()) {
+                if (grid[r][c] == 1 && eatenPellets.find({c, r}) == eatenPellets.end()) {
                     outputPixel(c, r, 255, 200, 0);
                 }
             }
