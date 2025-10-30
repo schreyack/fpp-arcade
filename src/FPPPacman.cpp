@@ -141,11 +141,21 @@ public:
         if (dir == 2) { eyeX = x; eyeY = y-1; }
         if (dir == 3) { eyeX = x-1; eyeY = y; }
         outputPixel(eyeX, eyeY, 0,0,0);
-        // Draw pellet inside mouth if Pacman is on a pellet position
-        int pelletX = (x + 1) / 2 * 2; // Round to nearest pellet position
-        int pelletY = (y + 1) / 2 * 2;
-        if (pelletX >= 0 && pelletY >= 0 && pelletX < cols && pelletY < rows && 
-            eatenPellets.find({pelletX, pelletY}) == eatenPellets.end()) {
+        // Draw pellet inside mouth if Pacman has uneaten pellets within his radius
+        bool hasNearbyPellet = false;
+        for (int pr = y - pacRadius; pr <= y + pacRadius && !hasNearbyPellet; pr += 2) {
+            for (int pc = x - pacRadius; pc <= x + pacRadius && !hasNearbyPellet; pc += 2) {
+                if (pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
+                    int dx = pc - x;
+                    int dy = pr - y;
+                    if (dx*dx + dy*dy <= pacRadius*pacRadius && 
+                        eatenPellets.find({pc, pr}) == eatenPellets.end()) {
+                        hasNearbyPellet = true;
+                    }
+                }
+            }
+        }
+        if (hasNearbyPellet) {
             // Show pellet in mouth at a slight offset
             int mouthX = x, mouthY = y;
             if (dir == 0) mouthX = x - 1;
@@ -207,24 +217,42 @@ public:
             pacmanX = nx; pacmanY = ny;
         }
         
-        // Eat pellet at Pacman's current position (round to nearest pellet location)
-        int pelletX = (pacmanX + 1) / 2 * 2; // Round to nearest even coordinate
-        int pelletY = (pacmanY + 1) / 2 * 2;
-        if (pelletX >= 0 && pelletX < cols && pelletY >= 0 && pelletY < rows) {
-            eatenPellets.insert({pelletX, pelletY});
+        // Eat pellets within Pacman's radius
+        for (int pr = pacmanY - pacRadius; pr <= pacmanY + pacRadius; pr += 2) {
+            for (int pc = pacmanX - pacRadius; pc <= pacmanX + pacRadius; pc += 2) {
+                if (pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
+                    int dx = pc - pacmanX;
+                    int dy = pr - pacmanY;
+                    if (dx*dx + dy*dy <= pacRadius*pacRadius) {
+                        eatenPellets.insert({pc, pr});
+                    }
+                }
+            }
         }
     }
 
     bool isPositionOccupied(int x, int y, int excludeIndex = -1) {
         // Check if position is occupied by any ghost (except optionally excluded one)
         for (size_t i = 0; i < ghosts.size(); i++) {
-            if ((int)i != excludeIndex && abs(ghosts[i].x - x) <= ghostSize/2 && abs(ghosts[i].y - y) <= ghostSize/2) {
-                return true;
+            if ((int)i != excludeIndex) {
+                int dx = ghosts[i].x - x;
+                int dy = ghosts[i].y - y;
+                int distanceSquared = dx*dx + dy*dy;
+                int radiusSum = ghostSize/2 + ghostSize/2; // Both have same radius
+                if (distanceSquared <= radiusSum * radiusSum) {
+                    return true;
+                }
             }
         }
         // Also check player ghost
-        if (excludeIndex != -2 && abs(playerGhost.x - x) <= ghostSize/2 && abs(playerGhost.y - y) <= ghostSize/2) {
-            return true;
+        if (excludeIndex != -2) {
+            int dx = playerGhost.x - x;
+            int dy = playerGhost.y - y;
+            int distanceSquared = dx*dx + dy*dy;
+            int radiusSum = ghostSize/2 + ghostSize/2;
+            if (distanceSquared <= radiusSum * radiusSum) {
+                return true;
+            }
         }
         return false;
     }
