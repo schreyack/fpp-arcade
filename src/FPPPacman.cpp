@@ -110,10 +110,10 @@ public:
             grid[houseTop][doorStart + d] = 0;
         }
 
-        // clear some pellets to make corridors
-        for (int r = 2; r < rows-2; r+=2) {
-            for (int c = 2; c < cols-2; c+=3) {
-                grid[r][c] = 0; // empty
+        // clear some pellets to make corridors, spaced for larger Pacman
+        for (int r = minWallGap; r < rows-minWallGap; r+=minWallGap) {
+            for (int c = minWallGap; c < cols-minWallGap; c+=minWallGap) {
+                grid[r][c] = 1; // pellet
             }
         }
 
@@ -311,6 +311,16 @@ public:
         }
     }
 
+    // Update pellet spacing and wall gap for larger sprites
+    int pacRadius = 2; // Pacman radius
+    int ghostSize = 4; // Ghost width/height
+    int minWallGap = std::max(5, pacRadius*2+1); // Minimum gap between walls
+
+    bool checkCollision(int ax, int ay, int ar, int bx, int by, int br) {
+        // Simple bounding box overlap
+        return abs(ax-bx) <= (ar+br-1) && abs(ay-by) <= (ar+br-1);
+    }
+
     virtual int32_t update() override {
         if (!GameOn) {
             if (WaitingUntilOutput) {
@@ -334,7 +344,7 @@ public:
 
         // check collisions
         for (auto &gh : ghosts) {
-            if (gh.x == pacmanX && gh.y == pacmanY) {
+            if (checkCollision(pacmanX, pacmanY, pacRadius, gh.x, gh.y, ghostSize/2)) {
                 GameOn = false;
                 outputString("GAME", cols/2 - 4, rows/2-3);
                 outputString("OVER", cols/2 - 4, rows/2+1);
@@ -343,7 +353,7 @@ public:
             }
         }
         // check collision with player-controlled ghost
-        if (playerGhost.x == pacmanX && playerGhost.y == pacmanY) {
+        if (checkCollision(pacmanX, pacmanY, pacRadius, playerGhost.x, playerGhost.y, ghostSize/2)) {
             GameOn = false;
             outputString("GAME", cols/2 - 4, rows/2-3);
             outputString("OVER", cols/2 - 4, rows/2+1);
