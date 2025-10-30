@@ -117,56 +117,67 @@ public:
             }
         }
 
+        // Remove border walls that block large sprites
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (r < pacRadius || r >= rows-pacRadius || c < pacRadius || c >= cols-pacRadius) {
+                    grid[r][c] = 0; // open space at edges
+                }
+            }
+        }
+        // Ensure all vertical corridors are at least minWallGap wide
+        std::vector<int> vcols;
+        for (int i = minWallGap; i < cols-minWallGap; i += minWallGap) {
+            vcols.push_back(i);
+        }
+        for (int vc : vcols) {
+            for (int r = pacRadius; r < rows-pacRadius; r++) {
+                grid[r][vc] = 2;
+            }
+        }
+        // Ensure all horizontal corridors are at least minWallGap wide
+        std::vector<int> hrows;
+        for (int i = minWallGap; i < rows-minWallGap; i += minWallGap) {
+            hrows.push_back(i);
+        }
+        for (int hr : hrows) {
+            for (int c = pacRadius; c < cols-pacRadius; c++) {
+                grid[hr][c] = 2;
+            }
+        }
+        // Place Pacman in a guaranteed open area
         pacmanX = cols/2;
         pacmanY = rows/2;
-        pacDir = 0; // left
-
-        // ghosts
+        while (!canMoveTo(pacmanX, pacmanY, pacRadius)) {
+            pacmanX++;
+            if (pacmanX >= cols-pacRadius) { pacmanX = pacRadius; pacmanY++; }
+            if (pacmanY >= rows-pacRadius) pacmanY = pacRadius;
+        }
+        // Place ghosts in guaranteed open areas
         ghosts.clear();
-        int numGhosts = 3 + (rand() % 8); // 3-10 ghosts
-        int px = pacmanX;
-        int py = pacmanY;
+        int numGhosts = 3 + (rand() % 8);
         std::vector<std::pair<int, int>> ghostPositions;
-        for (int r = minWallGap; r < rows-minWallGap; r += minWallGap) {
-            for (int c = minWallGap; c < cols-minWallGap; c += minWallGap) {
-                if (grid[r][c] != 2) ghostPositions.push_back({c, r});
+        for (int r = pacRadius; r < rows-pacRadius; r++) {
+            for (int c = pacRadius; c < cols-pacRadius; c++) {
+                if (grid[r][c] != 2 && !(abs(c-pacmanX)<=pacRadius && abs(r-pacmanY)<=pacRadius)) ghostPositions.push_back({c, r});
             }
         }
-        // Filter out positions too close to Pacman (distance <= 1)
-        std::vector<std::pair<int, int>> validGhostPositions;
-        for (auto &pos : ghostPositions) {
-            int dx = abs(pos.first - px);
-            int dy = abs(pos.second - py);
-            if (dx > 1 || dy > 1) {
-                validGhostPositions.push_back(pos);
-            }
-        }
-        // If not enough valid positions, fill with random positions far from Pacman
-        while (validGhostPositions.size() < (size_t)numGhosts) {
-            int gx = rand() % cols;
-            int gy = rand() % rows;
-            int dx = abs(gx - px);
-            int dy = abs(gy - py);
-            if ((dx > 1 || dy > 1) && grid[gy][gx] != 2) {
-                validGhostPositions.push_back({gx, gy});
-            }
-        }
-        // Place player-controlled ghost at a fixed position far from Pacman
-        playerGhost.x = cols - 2;
-        playerGhost.y = rows - 2;
+        // Place player-controlled ghost in a guaranteed open area
+        playerGhost.x = cols-pacRadius-1;
+        playerGhost.y = rows-pacRadius-1;
         playerGhost.dir = 0;
-        // Remove this position from validGhostPositions to avoid overlap
-        validGhostPositions.erase(
-            std::remove_if(validGhostPositions.begin(), validGhostPositions.end(),
+        // Remove this position from ghostPositions
+        ghostPositions.erase(
+            std::remove_if(ghostPositions.begin(), ghostPositions.end(),
                 [&](const std::pair<int,int>& pos) {
                     return pos.first == playerGhost.x && pos.second == playerGhost.y;
                 }),
-            validGhostPositions.end());
+            ghostPositions.end());
         for (int i = 0; i < numGhosts; ++i) {
             Ghost g;
-            int idx = i % validGhostPositions.size();
-            g.x = validGhostPositions[idx].first;
-            g.y = validGhostPositions[idx].second;
+            int idx = i % ghostPositions.size();
+            g.x = ghostPositions[idx].first;
+            g.y = ghostPositions[idx].second;
             ghosts.push_back(g);
         }
 
