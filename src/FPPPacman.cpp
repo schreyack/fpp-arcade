@@ -53,29 +53,48 @@ public:
             grid[r].resize(cols, 1); // 1 = pellet
         }
         
-        // Create central room with doorway
-        int roomSize = 6; // 6x6 room
-        int roomStartX = (cols - roomSize) / 2;
-        int roomStartY = (rows - roomSize) / 2;
-        int roomEndX = roomStartX + roomSize - 1;
-        int roomEndY = roomStartY + roomSize - 1;
+        // Create central room with doorway (approximately 15 wide x 9 high, 2-unit thick walls)
+        int roomWidth = 15;
+        int roomHeight = 9;
+        int wallThickness = 2;
         
-        // Top wall of room
-        for (int c = roomStartX; c <= roomEndX; c++) {
-            grid[roomStartY][c] = 2;
+        // Adjust room size to fit within grid bounds
+        if (roomWidth >= cols - 4) roomWidth = cols - 4;
+        if (roomHeight >= rows - 4) roomHeight = rows - 4;
+        
+        int roomStartX = (cols - roomWidth) / 2;
+        int roomStartY = (rows - roomHeight) / 2;
+        int roomEndX = roomStartX + roomWidth - 1;
+        int roomEndY = roomStartY + roomHeight - 1;
+        
+        // Create walls (2 units thick)
+        // Top wall
+        for (int r = roomStartY; r < roomStartY + wallThickness; r++) {
+            for (int c = roomStartX; c <= roomEndX; c++) {
+                if (r < rows && c < cols) grid[r][c] = 2;
+            }
         }
-        // Bottom wall of room
-        for (int c = roomStartX; c <= roomEndX; c++) {
-            grid[roomEndY][c] = 2;
+        // Bottom wall
+        for (int r = roomEndY - wallThickness + 1; r <= roomEndY; r++) {
+            for (int c = roomStartX; c <= roomEndX; c++) {
+                if (r >= 0 && c < cols) grid[r][c] = 2;
+            }
         }
-        // Left wall of room
-        for (int r = roomStartY; r <= roomEndY; r++) {
-            grid[r][roomStartX] = 2;
+        // Left wall
+        for (int c = roomStartX; c < roomStartX + wallThickness; c++) {
+            for (int r = roomStartY; r <= roomEndY; r++) {
+                if (c < cols && r < rows) grid[r][c] = 2;
+            }
         }
-        // Right wall with doorway (opening in middle)
-        for (int r = roomStartY; r <= roomEndY; r++) {
-            if (r < roomStartY + 2 || r > roomEndY - 2) { // Leave middle open for doorway
-                grid[r][roomEndX] = 2;
+        // Right wall with doorway
+        for (int c = roomEndX - wallThickness + 1; c <= roomEndX; c++) {
+            for (int r = roomStartY; r <= roomEndY; r++) {
+                // Leave middle section open for doorway (wide enough for Pacman)
+                int doorStart = roomStartY + roomHeight/2 - 2; // 4 units wide door
+                int doorEnd = roomStartY + roomHeight/2 + 2;
+                if (r < doorStart || r > doorEnd) {
+                    if (c >= 0 && r < rows) grid[r][c] = 2;
+                }
             }
         }
         
