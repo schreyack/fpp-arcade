@@ -154,8 +154,8 @@ public:
         
         
         // Top-left room - centered in top-left quadrant
-        int roomStartX = cols/4 - roomWidth/2;
-        int roomStartY = rows/4 - roomHeight/2;
+        int roomStartX = std::max(0, cols/4 - roomWidth/2);
+        int roomStartY = std::max(0, rows/4 - roomHeight/2);
 
         drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
