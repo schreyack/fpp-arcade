@@ -180,35 +180,35 @@ public:
     }
 
     void drawPacman(int x, int y, int dir) {
-        // Draw Pacman as a circle with a mouth (arc)
-        int r = 1; // radius in grid units
+        // Draw Pacman as a larger circle with a mouth (arc)
+        int r = 2; // radius in grid units (bigger)
         for (int dx = -r; dx <= r; dx++) {
             for (int dy = -r; dy <= r; dy++) {
                 if (dx*dx + dy*dy <= r*r) {
                     // mouth opening: skip pixels in direction of movement
                     bool mouth = false;
-                    if (dir == 0 && dx < 0 && abs(dy) < r) mouth = true; // left
-                    if (dir == 1 && dy < 0 && abs(dx) < r) mouth = true; // up
-                    if (dir == 2 && dx > 0 && abs(dy) < r) mouth = true; // right
-                    if (dir == 3 && dy > 0 && abs(dx) < r) mouth = true; // down
+                    if (dir == 0 && dx < 0 && abs(dy) <= r/2) mouth = true; // left
+                    if (dir == 1 && dy < 0 && abs(dx) <= r/2) mouth = true; // up
+                    if (dir == 2 && dx > 0 && abs(dy) <= r/2) mouth = true; // right
+                    if (dir == 3 && dy > 0 && abs(dx) <= r/2) mouth = true; // down
                     if (!mouth) outputPixel(x+dx, y+dy, 255, 255, 0);
                 }
             }
         }
     }
     void drawGhost(int x, int y, int r, int g, int b) {
-        // Draw ghost as a rectangle with eyes
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
+        // Draw ghost as a larger rectangle with eyes
+        for (int dx = -2; dx <= 1; dx++) {
+            for (int dy = -2; dy <= 1; dy++) {
                 outputPixel(x+dx, y+dy, r, g, b);
             }
         }
         // Eyes (white)
-        outputPixel(x-1, y-1, 255,255,255);
-        outputPixel(x+1, y-1, 255,255,255);
+        outputPixel(x-1, y-2, 255,255,255);
+        outputPixel(x+0, y-2, 255,255,255);
         // Pupils (black)
-        outputPixel(x-1, y-1, 0,0,0);
-        outputPixel(x+1, y-1, 0,0,0);
+        outputPixel(x-1, y-2, 0,0,0);
+        outputPixel(x+0, y-2, 0,0,0);
     }
 
     void CopyToModel() {
