@@ -149,34 +149,7 @@ public:
         int roomStartY = (rows - roomHeight) / 2;
         drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
-        // Draw four corner rooms with smaller size to avoid overlap
-        int cornerRoomWidth = 15; // Smaller than central room
-        int cornerRoomHeight = 9;
-        
-        // Ensure corner rooms fit within bounds
-        if (cornerRoomWidth > cols / 2) cornerRoomWidth = cols / 2;
-        if (cornerRoomHeight > rows / 2) cornerRoomHeight = rows / 2;
-        
-        // Top-left room - centered in top-left quadrant
-        int roomStartX = std::max(0, cols/4 - cornerRoomWidth/2);
-        int roomStartY = std::max(0, rows/4 - cornerRoomHeight/2);
-        drawRoom(roomStartX, roomStartY, cornerRoomWidth, cornerRoomHeight, rand() % 4);
-        
-        // Top-right room
-        roomStartX = std::max(0, 3*cols/4 - cornerRoomWidth/2);
-        roomStartY = std::max(0, rows/4 - cornerRoomHeight/2);
-        drawRoom(roomStartX, roomStartY, cornerRoomWidth, cornerRoomHeight, rand() % 4);
-        
-        // Bottom-left room
-        roomStartX = std::max(0, cols/4 - cornerRoomWidth/2);
-        roomStartY = std::max(0, 3*rows/4 - cornerRoomHeight/2);
-        drawRoom(roomStartX, roomStartY, cornerRoomWidth, cornerRoomHeight, rand() % 4);
-        
-        // Bottom-right room
-        roomStartX = std::max(0, 3*cols/4 - cornerRoomWidth/2);
-        roomStartY = std::max(0, 3*rows/4 - cornerRoomHeight/2);
-        drawRoom(roomStartX, roomStartY, cornerRoomWidth, cornerRoomHeight, rand() % 4);
-        
+
         // Place pellets at even coordinates (multiples of 2) except on walls
         for (int r = 0; r < rows; r += 2) {
             for (int c = 0; c < cols; c += 2) {
