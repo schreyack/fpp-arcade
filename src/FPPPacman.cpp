@@ -200,15 +200,15 @@ public:
         }
         if (canMoveTo(nx, ny, pacRadius)) {
             pacmanX = nx; pacmanY = ny;
-            
-            // Eat pellets in grid (check nearby grid positions)
-            for (int dr = -1; dr <= 1; dr++) {
-                for (int dc = -1; dc <= 1; dc++) {
-                    int pr = ny + dr * 2;
-                    int pc = nx + dc * 2;
-                    if (pr % 2 == 0 && pc % 2 == 0 && pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
-                        eatenPellets.insert({pc, pr});
-                    }
+        }
+        
+        // Always eat pellets near current position
+        for (int dr = -1; dr <= 1; dr++) {
+            for (int dc = -1; dc <= 1; dc++) {
+                int pr = pacmanY + dr * 2;
+                int pc = pacmanX + dc * 2;
+                if (pr % 2 == 0 && pc % 2 == 0 && pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
+                    eatenPellets.insert({pc, pr});
                 }
             }
         }
