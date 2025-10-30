@@ -145,9 +145,9 @@ public:
             }
         }
         
-        // Place pellets everywhere except on walls
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
+        // Place pellets at even coordinates (multiples of 2) except on walls
+        for (int r = 0; r < rows; r += 2) {
+            for (int c = 0; c < cols; c += 2) {
                 if (grid[r][c] != 2) { // Not a wall
                     grid[r][c] = 1; // Pellet
                 }
