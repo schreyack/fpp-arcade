@@ -39,81 +39,54 @@ public:
             grid[rows-1][c] = 2;
         }
 
-        // add a more complex Pac-Man-like maze while ensuring no fully enclosed regions
-        int midC = cols / 2;
-        int midR = rows / 2;
-
-        int minGap = 3;
-        int gapW = std::max(minGap, std::min(minGap, cols - 6));
-        int gapH = std::max(minGap, std::min(minGap, rows - 8));
-
-        int gapColStart = std::max(2, midC - (gapW / 2));
-        int gapColEnd = std::min(cols-3, gapColStart + gapW - 1);
-        int gapRowStart = std::max(2, midR - (gapH / 2));
-        int gapRowEnd = std::min(rows-3, gapRowStart + gapH - 1);
-
-        // vertical corridors: left, center-left, center-right, right
-        std::vector<int> vcols;
-        vcols.push_back(2);
-        if (cols > 10) vcols.push_back(std::max(3, midC - 3));
-        if (cols > 12) vcols.push_back(std::min(cols-4, midC + 3));
-        vcols.push_back(cols - 3);
-
-        for (int vc : vcols) {
-            for (int r = 1; r < rows-1; r++) {
-                // leave center opening and small top/bottom openings to avoid isolating areas
-                bool inCenterGap = (r >= gapRowStart && r <= gapRowEnd);
-                bool inTopGap = (r >= 2 && r <= 2 + (gapRowStart/3));
-                bool inBottomGap = (r >= rows-3-(gapRowStart/3) && r <= rows-2);
-                if (!inCenterGap && !inTopGap && !inBottomGap) {
-                    if (vc > 1 && vc < cols-1) grid[r][vc] = 2;
+        // NEW MAZE GENERATION FOR LARGE CHARACTERS
+        // Clear grid
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                grid[r][c] = 0;
+            }
+        }
+        // Parameters for character size
+        int corridorW = pacRadius*2+1;
+        int corridorH = pacRadius*2+1;
+        int roomW = corridorW*2;
+        int roomH = corridorH*2;
+        // Place horizontal corridors
+        for (int r = corridorH; r < rows-corridorH; r += corridorH+roomH) {
+            for (int c = 0; c < cols; c++) {
+                for (int w = 0; w < corridorW; w++) {
+                    if (r+w < rows) grid[r+w][c] = 0;
                 }
             }
         }
-
-        // horizontal corridors: top, middle-top, middle-bottom, bottom
-        std::vector<int> hrows;
-        hrows.push_back(3);
-        if (rows > 12) hrows.push_back(std::max(4, midR - 2));
-        if (rows > 14) hrows.push_back(std::min(rows-5, midR + 2));
-        hrows.push_back(rows - 4);
-
-        for (int hr : hrows) {
-            for (int c = 1; c < cols-1; c++) {
-                bool inCenterGap = (c >= gapColStart && c <= gapColEnd);
-                bool inLeftGap = (c >= 2 && c <= 2 + (gapColStart/3));
-                bool inRightGap = (c >= cols-3-(gapColStart/3) && c <= cols-2);
-                if (!inCenterGap && !inLeftGap && !inRightGap) {
-                    if (hr > 1 && hr < rows-1) grid[hr][c] = 2;
+        // Place vertical corridors
+        for (int c = corridorW; c < cols-corridorW; c += corridorW+roomW) {
+            for (int r = 0; r < rows; r++) {
+                for (int w = 0; w < corridorW; w++) {
+                    if (c+w < cols) grid[r][c+w] = 0;
                 }
             }
         }
-
-        // central ghost house: small rectangle with an opening
-        int houseW = std::min(cols - 6, 7);
-        int houseH = 3;
-        int houseLeft = midC - houseW / 2;
-        int houseTop = midR - 1;
-        if (houseLeft < 2) houseLeft = 2;
-        if (houseTop < 2) houseTop = 2;
-        for (int x = houseLeft; x < houseLeft + houseW; x++) {
-            grid[houseTop][x] = 2;
-            grid[houseTop + houseH - 1][x] = 2;
+        // Place rooms at intersections
+        for (int r = corridorH; r < rows-corridorH; r += corridorH+roomH) {
+            for (int c = corridorW; c < cols-corridorW; c += corridorW+roomW) {
+                for (int dr = 0; dr < roomH; dr++) {
+                    for (int dc = 0; dc < roomW; dc++) {
+                        if (r+dr < rows && c+dc < cols) grid[r+dr][c+dc] = 0;
+                    }
+                }
+            }
         }
-        for (int y = houseTop; y < houseTop + houseH; y++) {
-            grid[y][houseLeft] = 2;
-            grid[y][houseLeft + houseW - 1] = 2;
+        // Place walls everywhere else
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (grid[r][c] != 0) grid[r][c] = 2;
+            }
         }
-        int doorW = std::min(3, houseW - 2);
-        int doorStart = houseLeft + (houseW / 2) - (doorW / 2);
-        for (int d = 0; d < doorW; d++) {
-            grid[houseTop][doorStart + d] = 0;
-        }
-
-        // clear some pellets to make corridors, spaced for larger Pacman
-        for (int r = minWallGap; r < rows-minWallGap; r+=minWallGap) {
-            for (int c = minWallGap; c < cols-minWallGap; c+=minWallGap) {
-                grid[r][c] = 1; // pellet
+        // Place pellets in open areas, spaced for large Pacman
+        for (int r = pacRadius; r < rows-pacRadius; r += corridorH) {
+            for (int c = pacRadius; c < cols-pacRadius; c += corridorW) {
+                if (grid[r][c] == 0) grid[r][c] = 1;
             }
         }
 
