@@ -180,20 +180,37 @@ public:
     }
 
     void drawPacman(int x, int y, int dir) {
-        // Draw Pacman as a larger circle with a mouth (arc)
-        int r = 2; // radius in grid units (bigger)
+        int r = 2; // radius in grid units
+        // Draw Pacman body and mouth
         for (int dx = -r; dx <= r; dx++) {
             for (int dy = -r; dy <= r; dy++) {
                 if (dx*dx + dy*dy <= r*r) {
-                    // mouth opening: skip pixels in direction of movement
+                    // mouth opening: skip pixels in direction of movement except for front edge
                     bool mouth = false;
-                    if (dir == 0 && dx < 0 && abs(dy) <= r/2) mouth = true; // left
-                    if (dir == 1 && dy < 0 && abs(dx) <= r/2) mouth = true; // up
-                    if (dir == 2 && dx > 0 && abs(dy) <= r/2) mouth = true; // right
-                    if (dir == 3 && dy > 0 && abs(dx) <= r/2) mouth = true; // down
-                    if (!mouth) outputPixel(x+dx, y+dy, 255, 255, 0);
+                    bool front = false;
+                    if (dir == 0) { mouth = (dx < 0 && abs(dy) <= r/2); front = (dx == -r && abs(dy) <= r/2); }
+                    if (dir == 1) { mouth = (dy < 0 && abs(dx) <= r/2); front = (dy == -r && abs(dx) <= r/2); }
+                    if (dir == 2) { mouth = (dx > 0 && abs(dy) <= r/2); front = (dx == r && abs(dy) <= r/2); }
+                    if (dir == 3) { mouth = (dy > 0 && abs(dx) <= r/2); front = (dy == r && abs(dx) <= r/2); }
+                    if (!mouth || front) outputPixel(x+dx, y+dy, 255, 255, 0);
                 }
             }
+        }
+        // Draw eye
+        int eyeX = x, eyeY = y;
+        if (dir == 0) { eyeX = x; eyeY = y-1; }
+        if (dir == 1) { eyeX = x+1; eyeY = y; }
+        if (dir == 2) { eyeX = x; eyeY = y-1; }
+        if (dir == 3) { eyeX = x-1; eyeY = y; }
+        outputPixel(eyeX, eyeY, 0,0,0);
+        // Draw pellet inside mouth if Pacman overlaps a pellet
+        int pelletX = x, pelletY = y;
+        if (dir == 0) pelletX = x-2;
+        if (dir == 1) pelletY = y-2;
+        if (dir == 2) pelletX = x+2;
+        if (dir == 3) pelletY = y+2;
+        if (pelletX >= 0 && pelletY >= 0 && pelletX < cols && pelletY < rows && grid[pelletY][pelletX] == 1) {
+            outputPixel(pelletX, pelletY, 48, 48, 0);
         }
     }
     void drawGhost(int x, int y, int r, int g, int b) {
