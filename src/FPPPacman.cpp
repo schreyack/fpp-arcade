@@ -45,6 +45,7 @@ public:
     bool WaitingUntilOutput = false;
     long long timer = 75;
     int speedBoostTimer = 0;
+    int endTimer = 0;
 
     void drawRoom(int startX, int startY, int width, int height, int doorWall = -1) {
         int wallThickness = 2;
@@ -548,6 +549,11 @@ public:
 
     virtual int32_t update() override {
         if (!GameOn) {
+            if (endTimer > 0) {
+                endTimer--;
+                CopyToModel();
+                return timer;
+            }
             if (WaitingUntilOutput) {
                 model->setState(PixelOverlayState(PixelOverlayState::PixelState::Disabled));
                 return 0;
@@ -572,19 +578,21 @@ public:
         for (auto &gh : ghosts) {
             if (checkCollision(pacmanX, pacmanY, pacRadius, gh.x, gh.y, ghostSize/2)) {
                 GameOn = false;
+                endTimer = 67;
                 outputString("GAME", cols/2 - 4, rows/2-3);
                 outputString("OVER", cols/2 - 4, rows/2+3);
                 model->flushOverlayBuffer();
-                return 5000;
+                return timer;
             }
         }
         // check collision with player-controlled ghost
         if (checkCollision(pacmanX, pacmanY, pacRadius, playerGhost.x, playerGhost.y, ghostSize/2)) {
             GameOn = false;
+            endTimer = 67;
             outputString("GAME", cols/2 - 4, rows/2-3);
             outputString("OVER", cols/2 - 4, rows/2+3);
             model->flushOverlayBuffer();
-            return 5000;
+            return timer;
         }
 
         // check win: all pellets eaten
@@ -598,10 +606,11 @@ public:
         }
         if (pelletsLeft == 0 && specialPellets.empty()) {
             GameOn = false;
+            endTimer = 67;
             outputString("YOU", cols/2 - 3, rows/2-3);
             outputString("WIN", cols/2 - 3, rows/2+3);
             model->flushOverlayBuffer();
-            return 5000;
+            return timer;
         }
 
         CopyToModel();
