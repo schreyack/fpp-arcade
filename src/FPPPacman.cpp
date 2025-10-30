@@ -152,25 +152,25 @@ public:
         int tlStartY = 8;
         drawRoom(tlStartX, tlStartY, roomWidth, roomHeight, rand() % 4);
         
-        // Top-right room
-        int trStartX = cols - 8 - roomWidth;
-        int trStartY = 8;
-        drawRoom(trStartX, trStartY, roomWidth, roomHeight, rand() % 4);
+        // // Top-right room
+        // int trStartX = cols - 8 - roomWidth;
+        // int trStartY = 8;
+        // drawRoom(trStartX, trStartY, roomWidth, roomHeight, rand() % 4);
         
-        // Bottom-left room
-        int blStartX = 8;
-        int blStartY = rows - 8 - roomHeight;
-        drawRoom(blStartX, blStartY, roomWidth, roomHeight, rand() % 4);
+        // // Bottom-left room
+        // int blStartX = 8;
+        // int blStartY = rows - 8 - roomHeight;
+        // drawRoom(blStartX, blStartY, roomWidth, roomHeight, rand() % 4);
         
-        // Bottom-right room
-        int brStartX = cols - 8 - roomWidth;
-        int brStartY = rows - 8 - roomHeight;
-        drawRoom(brStartX, brStartY, roomWidth, roomHeight, rand() % 4);
+        // // Bottom-right room
+        // int brStartX = cols - 8 - roomWidth;
+        // int brStartY = rows - 8 - roomHeight;
+        // drawRoom(brStartX, brStartY, roomWidth, roomHeight, rand() % 4);
         
-        // Draw central room
-        int roomStartX = (cols - roomWidth) / 2;
-        int roomStartY = (rows - roomHeight) / 2;
-        drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
+        // // Draw central room
+        // int roomStartX = (cols - roomWidth) / 2;
+        // int roomStartY = (rows - roomHeight) / 2;
+        // drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
 
         // Place pellets at even coordinates (multiples of 2) except on walls
