@@ -30,7 +30,7 @@ public:
     int minWallGap = 5; // Minimum gap between walls
     int pacmanX = 1;
     int pacmanY = 1;
-    int pacDir = 0;
+    int pacDir = -1;  // -1 = no movement until input
     int playerGhostDir = 0;
     std::vector<std::vector<int>> grid; // 0 empty, 1 pellet, 2 wall
     std::set<std::pair<int, int>> eatenPellets; // Track which pellets have been eaten
@@ -191,6 +191,8 @@ public:
     }
 
     void movePacman() {
+        if (pacDir < 0) return;  // Don't move if no direction set
+        
         int nx = pacmanX; int ny = pacmanY;
         switch (pacDir) {
             case 0: nx--; break; // left
@@ -202,13 +204,11 @@ public:
             pacmanX = nx; pacmanY = ny;
         }
         
-        // Always eat pellets near current position
-        for (int dr = -1; dr <= 1; dr++) {
-            for (int dc = -1; dc <= 1; dc++) {
-                int pr = pacmanY + dr * 2;
-                int pc = pacmanX + dc * 2;
-                if (pr % 2 == 0 && pc % 2 == 0 && pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
-                    eatenPellets.insert({pc, pr});
+        // Eat pellets at all grid positions within range
+        for (int r = pacmanY - 3; r <= pacmanY + 3; r++) {
+            for (int c = pacmanX - 3; c <= pacmanX + 3; c++) {
+                if (r % 2 == 0 && c % 2 == 0 && r >= 0 && r < rows && c >= 0 && c < cols) {
+                    eatenPellets.insert({c, r});
                 }
             }
         }
