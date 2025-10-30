@@ -45,111 +45,84 @@ public:
         if (cols < 8) cols = 8;
         if (rows < 8) rows = 8;
 
-        // Create a proper maze with interconnected corridors
+        // Start with all walls
         grid.resize(rows);
         for (int r = 0; r < rows; r++) {
-            grid[r].resize(cols, 2); // 2 = wall by default
+            grid[r].resize(cols, 2); // 2 = wall
         }
         
-        // Carve out rooms and corridors using a simple algorithm
-        // Main horizontal corridor across the middle
-        int midRow = rows / 2;
-        for (int c = 0; c < cols; c++) {
-            for (int w = 0; w < 5; w++) {
-                if (midRow - 2 + w < rows) {
-                    grid[midRow - 2 + w][c] = 0;
+        // Helper lambda to carve a horizontal corridor
+        auto hCorridor = [this](int row, int colStart, int colEnd) {
+            for (int c = colStart; c <= colEnd && c < cols; c++) {
+                for (int w = 0; w < 3; w++) {
+                    int r = row + w;
+                    if (r < rows) grid[r][c] = 0;
                 }
             }
-        }
+        };
         
-        // Main vertical corridor down the center
-        int midCol = cols / 2;
-        for (int r = 0; r < rows; r++) {
-            for (int w = 0; w < 5; w++) {
-                if (midCol - 2 + w < cols) {
-                    grid[r][midCol - 2 + w] = 0;
+        // Helper lambda to carve a vertical corridor
+        auto vCorridor = [this](int col, int rowStart, int rowEnd) {
+            for (int r = rowStart; r <= rowEnd && r < rows; r++) {
+                for (int w = 0; w < 3; w++) {
+                    int c = col + w;
+                    if (c < cols) grid[r][c] = 0;
                 }
             }
-        }
+        };
         
-        // Top horizontal corridor
-        int topRow = 4;
-        for (int c = 0; c < cols; c++) {
-            for (int w = 0; w < 3; w++) {
-                if (topRow + w < rows) {
-                    grid[topRow + w][c] = 0;
-                }
-            }
-        }
+        // Create main boundary with borders
+        hCorridor(1, 1, cols - 2);          // top border
+        hCorridor(rows - 4, 1, cols - 2);   // bottom border
+        vCorridor(1, 1, rows - 4);          // left border
+        vCorridor(cols - 4, 1, rows - 4);   // right border
         
-        // Bottom horizontal corridor
-        int bottomRow = rows - 7;
-        for (int c = 0; c < cols; c++) {
-            for (int w = 0; w < 3; w++) {
-                if (bottomRow + w < rows) {
-                    grid[bottomRow + w][c] = 0;
-                }
-            }
-        }
+        // Main horizontal thoroughfare through center
+        int centerRow = rows / 2 - 1;
+        hCorridor(centerRow, 1, cols - 2);
         
-        // Left vertical corridor
-        int leftCol = 3;
-        for (int r = 0; r < rows; r++) {
-            for (int w = 0; w < 3; w++) {
-                if (leftCol + w < cols) {
-                    grid[r][leftCol + w] = 0;
-                }
-            }
-        }
+        // Left-side vertical spine
+        int leftSpine = cols / 4;
+        vCorridor(leftSpine, 1, rows - 4);
         
-        // Right vertical corridor
-        int rightCol = cols - 6;
-        for (int r = 0; r < rows; r++) {
-            for (int w = 0; w < 3; w++) {
-                if (rightCol + w < cols) {
-                    grid[r][rightCol + w] = 0;
-                }
-            }
-        }
+        // Right-side vertical spine
+        int rightSpine = 3 * cols / 4;
+        vCorridor(rightSpine, 1, rows - 4);
         
-        // Create some small branch corridors for complexity
-        // Upper left branch
-        for (int r = 2; r < topRow + 4; r++) {
-            for (int w = 0; w < 3; w++) {
-                if (leftCol - 3 + w >= 0 && leftCol - 3 + w < cols && r < rows) {
-                    grid[r][leftCol - 3 + w] = 0;
-                }
-            }
-        }
+        // Connect left spine to top (quarter points)
+        int q1 = cols / 8;
+        vCorridor(q1, 1, centerRow + 1);
+        hCorridor(6, q1, leftSpine);
         
-        // Upper right branch
-        for (int r = 2; r < topRow + 4; r++) {
-            for (int w = 0; w < 3; w++) {
-                if (rightCol + 3 + w < cols && r < rows) {
-                    grid[r][rightCol + 3 + w] = 0;
-                }
-            }
-        }
+        // Connect right spine to top
+        int q3 = 7 * cols / 8;
+        vCorridor(q3, 1, centerRow + 1);
+        hCorridor(6, rightSpine, q3);
         
-        // Lower left branch
-        for (int r = bottomRow - 2; r < rows - 2; r++) {
-            for (int w = 0; w < 3; w++) {
-                if (leftCol - 3 + w >= 0 && leftCol - 3 + w < cols && r >= 0 && r < rows) {
-                    grid[r][leftCol - 3 + w] = 0;
-                }
-            }
-        }
+        // Connect left spine to bottom
+        hCorridor(rows - 8, q1, leftSpine);
         
-        // Lower right branch
-        for (int r = bottomRow - 2; r < rows - 2; r++) {
-            for (int w = 0; w < 3; w++) {
-                if (rightCol + 3 + w < cols && r >= 0 && r < rows) {
-                    grid[r][rightCol + 3 + w] = 0;
-                }
-            }
-        }
+        // Connect right spine to bottom
+        hCorridor(rows - 8, rightSpine, q3);
         
-        // Fill open areas with pellets
+        // Upper left nook
+        hCorridor(3, 2, leftSpine - 2);
+        
+        // Upper right nook
+        hCorridor(3, rightSpine + 3, cols - 3);
+        
+        // Lower left nook
+        hCorridor(rows - 6, 2, leftSpine - 2);
+        
+        // Lower right nook
+        hCorridor(rows - 6, rightSpine + 3, cols - 3);
+        
+        // Small cross-corridors for connectivity
+        vCorridor(cols / 2 - 1, centerRow - 3, centerRow + 6);
+        hCorridor(centerRow - 3, leftSpine, rightSpine);
+        hCorridor(centerRow + 4, leftSpine, rightSpine);
+        
+        // Fill open corridor cells with pellets
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 if (grid[r][c] == 0) {
