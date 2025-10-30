@@ -305,6 +305,21 @@ public:
         model->flushOverlayBuffer();
     }
 
+    void eatPelletsAtPosition(int x, int y) {
+        // Eat pellets within Pacman's radius of the given position
+        for (int pr = y - pacRadius; pr <= y + pacRadius; pr += 2) {
+            for (int pc = x - pacRadius; pc <= x + pacRadius; pc += 2) {
+                if (pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
+                    int dx = pc - x;
+                    int dy = pr - y;
+                    if (dx*dx + dy*dy <= pacRadius*pacRadius) {
+                        eatenPellets.insert({pc, pr});
+                    }
+                }
+            }
+        }
+    }
+
     void movePacman() {
         if (pacDir < 0) return;  // Don't move if no direction set
         
@@ -317,19 +332,6 @@ public:
         }
         if (canMoveTo(nx, ny, pacRadius)) {
             pacmanX = nx; pacmanY = ny;
-        }
-        
-        // Eat pellets within Pacman's radius
-        for (int pr = pacmanY - pacRadius; pr <= pacmanY + pacRadius; pr += 2) {
-            for (int pc = pacmanX - pacRadius; pc <= pacmanX + pacRadius; pc += 2) {
-                if (pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
-                    int dx = pc - pacmanX;
-                    int dy = pr - pacmanY;
-                    if (dx*dx + dy*dy <= pacRadius*pacRadius) {
-                        eatenPellets.insert({pc, pr});
-                    }
-                }
-            }
         }
     }
 
@@ -362,20 +364,54 @@ public:
     void moveGhosts() {
         for (size_t i = 0; i < ghosts.size(); i++) {
             auto &gh = ghosts[i];
-            int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}};
-            std::vector<int> opts;
+            int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}}; // left, up, right, down
+            
+            // Calculate current distance to Pacman
+            int currentDist = (gh.x - pacmanX)*(gh.x - pacmanX) + (gh.y - pacmanY)*(gh.y - pacmanY);
+            
+            std::vector<std::pair<int, int>> candidates; // pair<direction, score>
             for (int d = 0; d < 4; d++) {
                 int nx = gh.x + dirs[d][0];
                 int ny = gh.y + dirs[d][1];
                 if (canMoveTo(nx, ny, ghostSize/2, true) && !isPositionOccupied(nx, ny, i)) {
-                    opts.push_back(d);
+                    // Calculate new distance to Pacman
+                    int newDist = (nx - pacmanX)*(nx - pacmanX) + (ny - pacmanY)*(ny - pacmanY);
+                    // Score based on distance reduction (higher is better)
+                    int score = currentDist - newDist;
+                    candidates.push_back({d, score});
                 }
             }
-            if (!opts.empty()) {
-                int pick = opts[rand() % opts.size()];
-                gh.x += dirs[pick][0];
-                gh.y += dirs[pick][1];
-                gh.dir = pick;
+            
+            if (!candidates.empty()) {
+                // Sort by score (best moves first)
+                std::sort(candidates.begin(), candidates.end(), 
+                         [](const std::pair<int,int>& a, const std::pair<int,int>& b) {
+                             return a.second > b.second; // Higher score first
+                         });
+                
+                // Choose direction with weighted probability favoring better moves
+                int totalWeight = 0;
+                std::vector<int> weights;
+                for (size_t j = 0; j < candidates.size(); j++) {
+                    int weight = candidates.size() - j; // Best move gets highest weight
+                    weights.push_back(weight);
+                    totalWeight += weight;
+                }
+                
+                int randVal = rand() % totalWeight;
+                int cumulative = 0;
+                int chosenDir = candidates[0].first; // Default to best
+                for (size_t j = 0; j < candidates.size(); j++) {
+                    cumulative += weights[j];
+                    if (randVal < cumulative) {
+                        chosenDir = candidates[j].first;
+                        break;
+                    }
+                }
+                
+                gh.x += dirs[chosenDir][0];
+                gh.y += dirs[chosenDir][1];
+                gh.dir = chosenDir;
             }
         }
         // Move player-controlled ghost
@@ -417,6 +453,7 @@ public:
         }
 
         movePacman();
+        eatPelletsAtPosition(pacmanX, pacmanY);
         moveGhosts();
 
         // check collisions
