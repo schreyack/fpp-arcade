@@ -120,39 +120,23 @@ public:
                 }
             }
         }
-        // When placing vertical and horizontal walls, never place within pacRadius or ghostSize/2 of the edges
-        for (int vc : vcols) {
-            if (vc < pacRadius || vc > cols-pacRadius-1) continue;
-            for (int r = pacRadius; r < rows-pacRadius; r++) {
-                grid[r][vc] = 2;
-            }
-        }
-        for (int hr : hrows) {
-            if (hr < pacRadius || hr > rows-pacRadius-1) continue;
-            for (int c = pacRadius; c < cols-pacRadius; c++) {
-                grid[hr][c] = 2;
-            }
-        }
         // Place Pacman in a guaranteed open area
-        pacmanX = pacRadius+1;
-        pacmanY = pacRadius+1;
-        while (!canMoveTo(pacmanX, pacmanY, pacRadius)) {
-            pacmanX++;
-            if (pacmanX >= cols-pacRadius) { pacmanX = pacRadius+1; pacmanY++; }
-            if (pacmanY >= rows-pacRadius) pacmanY = pacRadius+1;
-        }
+        pacmanX = cols/2;
+        pacmanY = rows/2;
         // Place ghosts in guaranteed open areas
         ghosts.clear();
-        int numGhosts = 3 + (rand() % 8);
+        int numGhosts = 3 + (rand() % 4);
         std::vector<std::pair<int, int>> ghostPositions;
-        for (int r = pacRadius; r < rows-pacRadius; r++) {
-            for (int c = pacRadius; c < cols-pacRadius; c++) {
-                if (grid[r][c] != 2 && !(abs(c-pacmanX)<=pacRadius && abs(r-pacmanY)<=pacRadius)) ghostPositions.push_back({c, r});
+        for (int r = pacRadius; r < rows-pacRadius; r += 3) {
+            for (int c = pacRadius; c < cols-pacRadius; c += 3) {
+                if (grid[r][c] != 2 && !(abs(c-pacmanX)<=3 && abs(r-pacmanY)<=3)) {
+                    ghostPositions.push_back({c, r});
+                }
             }
         }
         // Place player-controlled ghost in a guaranteed open area
-        playerGhost.x = cols-pacRadius-2;
-        playerGhost.y = rows-pacRadius-2;
+        playerGhost.x = pacRadius+1;
+        playerGhost.y = pacRadius+1;
         playerGhost.dir = 0;
         // Remove this position from ghostPositions
         ghostPositions.erase(
@@ -161,11 +145,10 @@ public:
                     return pos.first == playerGhost.x && pos.second == playerGhost.y;
                 }),
             ghostPositions.end());
-        for (int i = 0; i < numGhosts; ++i) {
+        for (int i = 0; i < numGhosts && i < (int)ghostPositions.size(); ++i) {
             Ghost g;
-            int idx = i % ghostPositions.size();
-            g.x = ghostPositions[idx].first;
-            g.y = ghostPositions[idx].second;
+            g.x = ghostPositions[i].first;
+            g.y = ghostPositions[i].second;
             ghosts.push_back(g);
         }
 
