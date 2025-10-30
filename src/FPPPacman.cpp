@@ -18,6 +18,26 @@ FPPPacman::~FPPPacman() {
 
 class PacmanEffect : public FPPArcadeGameEffect {
 public:
+    // Member variables declared first
+    int rows = 20;
+    int cols = 11;
+    int scale = 1;
+    int pacRadius = 2; // Pacman radius
+    int ghostSize = 4; // Ghost width/height
+    int minWallGap = 5; // Minimum gap between walls
+    int pacmanX = 1;
+    int pacmanY = 1;
+    int pacDir = 0;
+    int playerGhostDir = 0;
+    std::vector<std::vector<int>> grid; // 0 empty, 1 pellet, 2 wall
+    std::vector<Ghost> ghosts;
+    struct Ghost { int x; int y; int dir = 0; };
+    Ghost playerGhost; // Special ghost controlled by player 2
+    bool GameOn = true;
+    bool Paused = false;
+    bool WaitingUntilOutput = false;
+    long long timer = 200;
+
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
         m->getSize(cols, rows);
         cols /= scale; rows /= scale;
@@ -99,44 +119,53 @@ public:
                 if (grid[r][c] == 0) grid[r][c] = 1;
             }
         }
-        // Place Pacman in a guaranteed open area
+        // Place Pacman in a guaranteed open area (center)
         pacmanX = cols/2;
         pacmanY = rows/2;
-        // Place ghosts in guaranteed open areas
+        while (!canMoveTo(pacmanX, pacmanY, pacRadius)) {
+            pacmanX++;
+            if (pacmanX >= cols - pacRadius) {
+                pacmanX = pacRadius + 1;
+                pacmanY++;
+            }
+        }
+        
+        // Place ghosts in guaranteed open areas away from Pacman
         ghosts.clear();
         int numGhosts = 3 + (rand() % 4);
         std::vector<std::pair<int, int>> ghostPositions;
-        for (int r = pacRadius; r < rows-pacRadius; r += 3) {
-            for (int c = pacRadius; c < cols-pacRadius; c += 3) {
-                if (grid[r][c] != 2 && !(abs(c-pacmanX)<=3 && abs(r-pacmanY)<=3)) {
-                    ghostPositions.push_back({c, r});
+        
+        for (int r = pacRadius + 1; r < rows - pacRadius; r++) {
+            for (int c = pacRadius + 1; c < cols - pacRadius; c++) {
+                if (grid[r][c] != 2) {
+                    int distToPac = abs(c - pacmanX) + abs(r - pacmanY);
+                    if (distToPac > 5) {
+                        ghostPositions.push_back({c, r});
+                    }
                 }
             }
         }
-        // Place player-controlled ghost in a guaranteed open area
-        playerGhost.x = pacRadius+1;
-        playerGhost.y = pacRadius+1;
+        
+        // Place player-controlled ghost
+        playerGhost.x = pacRadius + 1;
+        playerGhost.y = pacRadius + 1;
+        if (!canMoveTo(playerGhost.x, playerGhost.y, ghostSize/2)) {
+            playerGhost.x = cols - pacRadius - 2;
+            playerGhost.y = rows - pacRadius - 2;
+        }
         playerGhost.dir = 0;
-        // Remove this position from ghostPositions
-        ghostPositions.erase(
-            std::remove_if(ghostPositions.begin(), ghostPositions.end(),
-                [&](const std::pair<int,int>& pos) {
-                    return pos.first == playerGhost.x && pos.second == playerGhost.y;
-                }),
-            ghostPositions.end());
+        
+        // Spawn AI ghosts
         for (int i = 0; i < numGhosts && i < (int)ghostPositions.size(); ++i) {
             Ghost g;
             g.x = ghostPositions[i].first;
             g.y = ghostPositions[i].second;
+            g.dir = 0;
             ghosts.push_back(g);
         }
 
         timer = 150;
     }
-
-    struct Ghost { int x; int y; int dir = 0; };
-    Ghost playerGhost; // Special ghost controlled by player 2
-    int playerGhostDir = 0;
 
     const std::string &name() const override {
         static std::string NAME = "Pacman";
@@ -191,10 +220,10 @@ public:
                 outputPixel(x+dx, y+dy, r, g, b);
             }
         }
-        // Eyes (white)
+        // Eyes (white background)
         outputPixel(x-1, y-2, 255,255,255);
         outputPixel(x+0, y-2, 255,255,255);
-        // Pupils (black)
+        // Pupils (black dots)
         outputPixel(x-1, y-2, 0,0,0);
         outputPixel(x+0, y-2, 0,0,0);
     }
@@ -389,19 +418,6 @@ public:
             }
         }
     }
-
-    int rows = 20;
-    int cols = 11;
-    int scale = 1;
-    std::vector<std::vector<int>> grid; // 0 empty, 1 pellet, 2 wall
-    int pacmanX = 1;
-    int pacmanY = 1;
-    int pacDir = 0;
-    std::vector<Ghost> ghosts;
-    bool GameOn = true;
-    bool Paused = false;
-    bool WaitingUntilOutput = false;
-    long long timer = 200;
 };
 
 const std::string &FPPPacman::getName() {
