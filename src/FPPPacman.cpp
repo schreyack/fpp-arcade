@@ -37,12 +37,14 @@ public:
     int playerGhostSpeedBoostTimer = 0; // Timer for speed boost effect
     std::vector<std::vector<int>> grid; // 0 empty, 1 pellet, 2 wall
     std::set<std::pair<int, int>> eatenPellets; // Track which pellets have been eaten
+    std::set<std::pair<int, int>> specialPellets; // Track special pellets
     std::vector<Ghost> ghosts;
     Ghost playerGhost; // Special ghost controlled by player 2
     bool GameOn = true;
     bool Paused = false;
     bool WaitingUntilOutput = false;
     long long timer = 75;
+    int speedBoostTimer = 0;
 
     void drawRoom(int startX, int startY, int width, int height, int doorWall = -1) {
         int wallThickness = 2;
@@ -187,6 +189,23 @@ public:
                     grid[r][c] = 2;
                 }
             }
+        }
+        
+        // Place special pellets randomly
+        int numSpecial = 3 + (rand() % 3); // 3 to 5 special pellets
+        for (int i = 0; i < numSpecial; i++) {
+            int attempts = 0;
+            bool placed = false;
+            do {
+                int r = rand() % rows;
+                int c = rand() % cols;
+                if (grid[r][c] == 0) { // Empty space
+                    grid[r][c] = 3;
+                    specialPellets.insert({c, r});
+                    placed = true;
+                }
+                attempts++;
+            } while (!placed && attempts < 100);
         }
         
         // Place Pacman in the center of the central room
@@ -353,6 +372,11 @@ public:
             }
         }
         
+        // Draw special pellets
+        for (auto &p : specialPellets) {
+            outputPixel(p.first, p.second, 255, 0, 255); // Magenta special pellets
+        }
+        
         // draw Pacman as scaled circle with mouth
         drawPacman(pacmanX, pacmanY, pacDir);
         // draw ghosts
@@ -387,6 +411,11 @@ public:
         if (canMoveTo(nx, ny, pacRadius)) {
             pacmanX = nx; pacmanY = ny;
             eatPelletsAtPosition(pacmanX, pacmanY); // Eat pellets immediately after moving
+            // Check for special pellet
+            if (specialPellets.find({pacmanX, pacmanY}) != specialPellets.end()) {
+                specialPellets.erase({pacmanX, pacmanY});
+                speedBoostTimer = 10; // Speed boost for 10 updates
+            }
         }
     }
 
@@ -529,15 +558,15 @@ public:
         }
 
         // check win: all pellets eaten
-        int totalPellets = 0;
+        int pelletsLeft = 0;
         for (int r = 0; r < rows; r += 2) {
             for (int c = 0; c < cols; c += 2) {
-                if (grid[r][c] != 2) { // Only count pellets not on walls
-                    totalPellets++;
+                if (grid[r][c] == 1 && eatenPellets.find({c, r}) == eatenPellets.end()) {
+                    pelletsLeft++;
                 }
             }
         }
-        if ((int)eatenPellets.size() >= totalPellets) {
+        if (pelletsLeft == 0 && specialPellets.empty()) {
             GameOn = false;
             outputString("YOU", cols/2 - 3, rows/2-3);
             outputString("WIN", cols/2 - 3, rows/2+1);
@@ -546,7 +575,12 @@ public:
         }
 
         CopyToModel();
-        return timer;
+        int currentTimer = timer;
+        if (speedBoostTimer > 0) {
+            currentTimer /= 2; // Faster updates during speed boost
+            speedBoostTimer--;
+        }
+        return currentTimer;
     }
 
     void button(const std::string &butt) {
