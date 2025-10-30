@@ -375,8 +375,21 @@ public:
             for (int c = 0; c < cols; c += 2) {
                 if (grid[r][c] == 1 && eatenPellets.find({c, r}) == eatenPellets.end()) {
                     outputPixel(c, r, 255, 200, 0);
-                } else if (grid[r][c] == 3) {
-                    outputPixel(c, r, 255, 0, 255); // Magenta special pellets
+                }
+            }
+        }
+        
+        // Draw special pellets as 4x4 blocks
+        for (auto &p : specialPellets) {
+            int tlx = p.first;
+            int tly = p.second;
+            for (int dr = 0; dr < 4; dr++) {
+                for (int dc = 0; dc < 4; dc++) {
+                    int px = tlx + dc;
+                    int py = tly + dr;
+                    if (px < cols && py < rows) {
+                        outputPixel(px, py, 255, 0, 255);
+                    }
                 }
             }
         }
