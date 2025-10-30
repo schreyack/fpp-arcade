@@ -45,79 +45,116 @@ public:
         if (cols < 8) cols = 8;
         if (rows < 8) rows = 8;
 
-        // Designed maze with proper corridors sized for large sprites
+        // Create a proper maze with interconnected corridors
         grid.resize(rows);
         for (int r = 0; r < rows; r++) {
-            grid[r].resize(cols, 0); // 0 = empty
+            grid[r].resize(cols, 2); // 2 = wall by default
         }
         
-        // Fill everything with pellets first
+        // Carve out rooms and corridors using a simple algorithm
+        // Main horizontal corridor across the middle
+        int midRow = rows / 2;
+        for (int c = 0; c < cols; c++) {
+            for (int w = 0; w < 5; w++) {
+                if (midRow - 2 + w < rows) {
+                    grid[midRow - 2 + w][c] = 0;
+                }
+            }
+        }
+        
+        // Main vertical corridor down the center
+        int midCol = cols / 2;
+        for (int r = 0; r < rows; r++) {
+            for (int w = 0; w < 5; w++) {
+                if (midCol - 2 + w < cols) {
+                    grid[r][midCol - 2 + w] = 0;
+                }
+            }
+        }
+        
+        // Top horizontal corridor
+        int topRow = 4;
+        for (int c = 0; c < cols; c++) {
+            for (int w = 0; w < 3; w++) {
+                if (topRow + w < rows) {
+                    grid[topRow + w][c] = 0;
+                }
+            }
+        }
+        
+        // Bottom horizontal corridor
+        int bottomRow = rows - 7;
+        for (int c = 0; c < cols; c++) {
+            for (int w = 0; w < 3; w++) {
+                if (bottomRow + w < rows) {
+                    grid[bottomRow + w][c] = 0;
+                }
+            }
+        }
+        
+        // Left vertical corridor
+        int leftCol = 3;
+        for (int r = 0; r < rows; r++) {
+            for (int w = 0; w < 3; w++) {
+                if (leftCol + w < cols) {
+                    grid[r][leftCol + w] = 0;
+                }
+            }
+        }
+        
+        // Right vertical corridor
+        int rightCol = cols - 6;
+        for (int r = 0; r < rows; r++) {
+            for (int w = 0; w < 3; w++) {
+                if (rightCol + w < cols) {
+                    grid[r][rightCol + w] = 0;
+                }
+            }
+        }
+        
+        // Create some small branch corridors for complexity
+        // Upper left branch
+        for (int r = 2; r < topRow + 4; r++) {
+            for (int w = 0; w < 3; w++) {
+                if (leftCol - 3 + w >= 0 && leftCol - 3 + w < cols && r < rows) {
+                    grid[r][leftCol - 3 + w] = 0;
+                }
+            }
+        }
+        
+        // Upper right branch
+        for (int r = 2; r < topRow + 4; r++) {
+            for (int w = 0; w < 3; w++) {
+                if (rightCol + 3 + w < cols && r < rows) {
+                    grid[r][rightCol + 3 + w] = 0;
+                }
+            }
+        }
+        
+        // Lower left branch
+        for (int r = bottomRow - 2; r < rows - 2; r++) {
+            for (int w = 0; w < 3; w++) {
+                if (leftCol - 3 + w >= 0 && leftCol - 3 + w < cols && r >= 0 && r < rows) {
+                    grid[r][leftCol - 3 + w] = 0;
+                }
+            }
+        }
+        
+        // Lower right branch
+        for (int r = bottomRow - 2; r < rows - 2; r++) {
+            for (int w = 0; w < 3; w++) {
+                if (rightCol + 3 + w < cols && r >= 0 && r < rows) {
+                    grid[r][rightCol + 3 + w] = 0;
+                }
+            }
+        }
+        
+        // Fill open areas with pellets
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                grid[r][c] = 1;
-            }
-        }
-        
-        // Draw thick walls (3-4 pixels wide) to form corridors
-        int wallThickness = 3;
-        
-        // Vertical walls (left and right sides)
-        int leftWall = 6;
-        int rightWall = cols - 7;
-        for (int r = 0; r < rows; r++) {
-            for (int w = 0; w < wallThickness; w++) {
-                if (leftWall + w < cols) grid[r][leftWall + w] = 2;
-                if (rightWall - w >= 0) grid[r][rightWall - w] = 2;
-            }
-        }
-        
-        // Horizontal walls (top and bottom)
-        int topWall = 5;
-        int bottomWall = rows - 6;
-        for (int c = 0; c < cols; c++) {
-            for (int w = 0; w < wallThickness; w++) {
-                if (topWall + w < rows) grid[topWall + w][c] = 2;
-                if (bottomWall - w >= 0) grid[bottomWall - w][c] = 2;
-            }
-        }
-        
-        // Create center vertical wall
-        int centerWall = cols / 2;
-        for (int r = 0; r < rows; r++) {
-            // Skip the middle third to create passage
-            if (r < rows/3 || r > 2*rows/3) {
-                for (int w = 0; w < wallThickness; w++) {
-                    if (centerWall + w < cols) grid[r][centerWall + w] = 2;
+                if (grid[r][c] == 0) {
+                    grid[r][c] = 1; // pellet
                 }
-            }
-        }
-        
-        // Create some internal divisions with gaps
-        int divideCol1 = cols / 4;
-        int divideCol2 = 3 * cols / 4;
-        
-        // Left division (with gap in middle)
-        for (int r = 0; r < rows; r++) {
-            if (r < rows/3 || r > 2*rows/3) {
-                for (int w = 0; w < wallThickness; w++) {
-                    if (divideCol1 + w < cols) grid[r][divideCol1 + w] = 2;
-                }
-            }
-        }
-        
-        // Right division (with gap in middle)
-        for (int r = 0; r < rows; r++) {
-            if (r < rows/3 || r > 2*rows/3) {
-                for (int w = 0; w < wallThickness; w++) {
-                    if (divideCol2 + w < cols) grid[r][divideCol2 + w] = 2;
-                }
-            }
-        }
-        
-        // Clear some areas to create rooms
-        for (int r = 2; r < rows - 2; r++) {
-            for (int c = 2; c < cols - 2; c++) {
-                if (grid[r][c] == 0) grid[r][c] = 1;
             }
         }
         // Place Pacman in a guaranteed open area (center)
