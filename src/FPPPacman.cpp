@@ -47,20 +47,28 @@ public:
         if (cols < 8) cols = 8;
         if (rows < 8) rows = 8;
 
-        // Initialize grid with pellets
+        // Initialize grid with empty spaces
         grid.resize(rows);
         for (int r = 0; r < rows; r++) {
-            grid[r].resize(cols, 1); // 1 = pellet
+            grid[r].resize(cols, 0); // 0 = empty
         }
         
-        // Create central room with doorway (approximately 15 wide x 9 high, 2-unit thick walls)
-        int roomWidth = 15;
-        int roomHeight = 9;
-        int wallThickness = 2;
+        // Create central room sized to contain approximately 15x9 pellets
+        // Since pellets are every 2 units, 15 pellets wide = 30 units, 9 pellets high = 18 units
+        int targetPelletsWide = 15;
+        int targetPelletsHigh = 9;
+        int pelletSpacing = 2;
         
-        // Adjust room size to fit within grid bounds
-        if (roomWidth >= cols - 4) roomWidth = cols - 4;
-        if (roomHeight >= rows - 4) roomHeight = rows - 4;
+        int targetWidth = targetPelletsWide * pelletSpacing;
+        int targetHeight = targetPelletsHigh * pelletSpacing;
+        
+        // Adjust to fit within grid bounds with wall thickness
+        int wallThickness = 2;
+        int maxInteriorWidth = cols - 2 * wallThickness;
+        int maxInteriorHeight = rows - 2 * wallThickness;
+        
+        int roomWidth = (targetWidth < maxInteriorWidth) ? targetWidth : maxInteriorWidth;
+        int roomHeight = (targetHeight < maxInteriorHeight) ? targetHeight : maxInteriorHeight;
         
         int roomStartX = (cols - roomWidth) / 2;
         int roomStartY = (rows - roomHeight) / 2;
@@ -94,6 +102,15 @@ public:
                 int doorEnd = roomStartY + roomHeight/2 + 2;
                 if (r < doorStart || r > doorEnd) {
                     if (c >= 0 && r < rows) grid[r][c] = 2;
+                }
+            }
+        }
+        
+        // Place pellets everywhere except on walls
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (grid[r][c] != 2) { // Not a wall
+                    grid[r][c] = 1; // Pellet
                 }
             }
         }
