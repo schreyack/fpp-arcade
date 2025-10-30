@@ -32,6 +32,8 @@ public:
     int pacmanY = 1;
     int pacDir = -1;  // -1 = no movement until input
     int playerGhostDir = 0;
+    int playerGhostSpeedBoostTimer = 0; // Timer for speed boost effect
+    int playerGhostLastPressedDir = -1; // Track last direction pressed to prevent continuous boosts
     std::vector<std::vector<int>> grid; // 0 empty, 1 pellet, 2 wall
     std::set<std::pair<int, int>> eatenPellets; // Track which pellets have been eaten
     std::vector<Ghost> ghosts;
@@ -183,6 +185,8 @@ public:
             attempts++;
         } while (((abs(playerGhost.x - pacmanX) + abs(playerGhost.y - pacmanY) < 5) || grid[playerGhost.y][playerGhost.x] == 2) && attempts < 20);
         playerGhost.dir = 0;
+        playerGhostSpeedBoostTimer = 0;
+        playerGhostLastPressedDir = -1;
 
     }
 
@@ -306,13 +310,14 @@ public:
     }
 
     void eatPelletsAtPosition(int x, int y) {
-        // Eat pellets within Pacman's radius of the given position
-        for (int pr = y - pacRadius; pr <= y + pacRadius; pr += 2) {
-            for (int pc = x - pacRadius; pc <= x + pacRadius; pc += 2) {
+        // Eat pellets within an extended radius of Pacman's position
+        int eatRadius = pacRadius + 1; // Slightly larger than movement radius
+        for (int pr = y - eatRadius; pr <= y + eatRadius; pr += 2) {
+            for (int pc = x - eatRadius; pc <= x + eatRadius; pc += 2) {
                 if (pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
                     int dx = pc - x;
                     int dy = pr - y;
-                    if (dx*dx + dy*dy <= pacRadius*pacRadius) {
+                    if (dx*dx + dy*dy <= eatRadius*eatRadius) {
                         eatenPellets.insert({pc, pr});
                     }
                 }
@@ -332,6 +337,7 @@ public:
         }
         if (canMoveTo(nx, ny, pacRadius)) {
             pacmanX = nx; pacmanY = ny;
+            eatPelletsAtPosition(pacmanX, pacmanY); // Eat pellets immediately after moving
         }
     }
 
@@ -416,12 +422,23 @@ public:
         }
         // Move player-controlled ghost
         int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}};
-        int nx = playerGhost.x + dirs[playerGhostDir][0];
-        int ny = playerGhost.y + dirs[playerGhostDir][1];
-        if (canMoveTo(nx, ny, ghostSize/2, true) && !isPositionOccupied(nx, ny, -2)) {
-            playerGhost.x = nx;
-            playerGhost.y = ny;
-            playerGhost.dir = playerGhostDir;
+        int moveCount = (playerGhostSpeedBoostTimer > 0) ? 2 : 1; // Move twice during speed boost
+        
+        for (int move = 0; move < moveCount; move++) {
+            int nx = playerGhost.x + dirs[playerGhostDir][0];
+            int ny = playerGhost.y + dirs[playerGhostDir][1];
+            if (canMoveTo(nx, ny, ghostSize/2, true) && !isPositionOccupied(nx, ny, -2)) {
+                playerGhost.x = nx;
+                playerGhost.y = ny;
+                playerGhost.dir = playerGhostDir;
+            } else {
+                break; // Stop moving if we hit a wall or occupied space
+            }
+        }
+        
+        // Decrement speed boost timer
+        if (playerGhostSpeedBoostTimer > 0) {
+            playerGhostSpeedBoostTimer--;
         }
     }
 
@@ -507,14 +524,24 @@ public:
         // Player 1 controls Pacman, Player 2 controls special ghost
         if (joystickName.ends_with("2")) {
             // Player 2 controls the ghost
+            int newDir = -1;
             if (button == "Left - Pressed") {
-                playerGhostDir = 0;
+                newDir = 0;
             } else if (button == "Up - Pressed") {
-                playerGhostDir = 1;
+                newDir = 1;
             } else if (button == "Right - Pressed") {
-                playerGhostDir = 2;
+                newDir = 2;
             } else if (button == "Down - Pressed") {
-                playerGhostDir = 3;
+                newDir = 3;
+            }
+            
+            if (newDir != -1) {
+                // Check if this direction matches current movement direction and wasn't the last press
+                if (newDir == playerGhostDir && newDir != playerGhostLastPressedDir && playerGhostSpeedBoostTimer == 0) {
+                    playerGhostSpeedBoostTimer = 5; // Speed boost for 5 update cycles
+                }
+                playerGhostDir = newDir;
+                playerGhostLastPressedDir = newDir;
             }
         } else {
             // Player 1 controls Pacman
