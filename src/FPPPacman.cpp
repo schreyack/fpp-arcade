@@ -2,6 +2,7 @@
 
 #include "FPPPacman.h"
 #include <vector>
+#include <set>
 #include <random>
 #include <algorithm>
 
@@ -32,6 +33,7 @@ public:
     int pacDir = 0;
     int playerGhostDir = 0;
     std::vector<std::vector<int>> grid; // 0 empty, 1 pellet, 2 wall
+    std::set<std::pair<int, int>> eatenPellets; // Track which pellets have been eaten
     std::vector<Ghost> ghosts;
     Ghost playerGhost; // Special ghost controlled by player 2
     bool GameOn = true;
@@ -168,10 +170,12 @@ public:
     void CopyToModel() {
         model->clearOverlayBuffer();
         
-        // Draw pellets in a grid pattern
+        // Draw pellets in a grid pattern (if not eaten)
         for (int r = 0; r < rows; r += 2) {
             for (int c = 0; c < cols; c += 2) {
-                outputPixel(c, r, 255, 200, 0);
+                if (eatenPellets.find({c, r}) == eatenPellets.end()) {
+                    outputPixel(c, r, 255, 200, 0);
+                }
             }
         }
         
@@ -196,9 +200,16 @@ public:
         }
         if (canMoveTo(nx, ny, pacRadius)) {
             pacmanX = nx; pacmanY = ny;
-            // eat pellet
-            if (grid[ny][nx] == 1) {
-                grid[ny][nx] = 0;
+            
+            // Eat pellets in grid (check nearby grid positions)
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    int pr = ny + dr * 2;
+                    int pc = nx + dc * 2;
+                    if (pr % 2 == 0 && pc % 2 == 0 && pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
+                        eatenPellets.insert({pc, pr});
+                    }
+                }
             }
         }
     }
@@ -276,14 +287,14 @@ public:
             return 2000;
         }
 
-        // check win: no pellets
-        bool any = false;
-        for (int r = 0; r < rows && !any; r++) {
-            for (int c = 0; c < cols; c++) {
-                if (grid[r][c] == 1) { any = true; break; }
+        // check win: all pellets eaten
+        int totalPellets = 0;
+        for (int r = 0; r < rows; r += 2) {
+            for (int c = 0; c < cols; c += 2) {
+                totalPellets++;
             }
         }
-        if (!any) {
+        if ((int)eatenPellets.size() >= totalPellets) {
             GameOn = false;
             outputString("YOU", cols/2 - 3, rows/2-3);
             outputString("WIN", cols/2 - 3, rows/2+1);
