@@ -22,11 +22,12 @@ public:
         cols /= sc;
         rows /= sc;
         
-        racketSize = rows / 5;
-        if (racketSize < 3) {
-            racketSize = 3;
+        int initialSize = rows / 5;
+        if (initialSize < 3) {
+            initialSize = 3;
         }
-        racketP1Pos = racketP2Pos = (rows - racketSize)/2;
+        racketP1Size = racketP2Size = initialSize;
+        racketP1Pos = racketP2Pos = (rows - initialSize)/2;
         offsetX = 0;
         offsetY = 0;
         
@@ -53,8 +54,10 @@ public:
         
         outputString(buf, (model->getWidth()/2 - len*2) / scl, 0, 128, 128, 128, scl);
         
-        for (int y = 0; y < racketSize; y++) {
+        for (int y = 0; y < racketP1Size; y++) {
             outputPixel(0, racketP1Pos + y, 255, 255, 255);
+        }
+        for (int y = 0; y < racketP2Size; y++) {
             outputPixel(cols-1, racketP2Pos + y, 255, 255, 255);
         }
         outputPixel(ballPosX, ballPosY, 255, 255, 255);
@@ -97,45 +100,55 @@ public:
         racketP1Pos += racketP1Speed;
         if (racketP1Pos < 0) {
             racketP1Pos = 0;
-        } else if ((racketP1Pos + racketSize) > rows) {
-            racketP1Pos = rows - racketSize;
+        } else if ((racketP1Pos + racketP1Size) > rows) {
+            racketP1Pos = rows - racketP1Size;
         }
         racketP2Pos += racketP2Speed;
         if (racketP2Pos < 0) {
             racketP2Pos = 0;
-        } else if ((racketP2Pos + racketSize) > rows) {
-            racketP2Pos = rows - racketSize;
+        } else if ((racketP2Pos + racketP2Size) > rows) {
+            racketP2Pos = rows - racketP2Size;
         }
     }
     void moveBall() {
         ballPosX += ballDirX * ballSpeed;
         ballPosY += ballDirY * ballSpeed;
         
-        // hit by left racket?
+         // hit by left racket?
          if (ballPosX <= 1 &&
-             ballPosY <= (racketP1Pos + racketSize) &&
+             ballPosY <= (racketP1Pos + racketP1Size) &&
              ballPosY >= racketP1Pos) {
              // set fly direction depending on where it hit the racket
              // (t is 0.5 if hit at top, 0 at center, -0.5 at bottom)
-             float t = ((ballPosY - racketP1Pos) / racketSize) - 0.5f;
+             float t = ((ballPosY - racketP1Pos) / racketP1Size) - 0.5f;
              ballDirX = std::fabs(ballDirX);
              ballDirY = t;
-         }
-        
-         // hit by right racket?
+             if (racketP1Size > 1) racketP1Size--;
+             if ((racketP1Pos + racketP1Size) > rows) {
+                 racketP1Pos = rows - racketP1Size;
+             }
+         }         // hit by right racket?
          if (ballPosX >= (cols-2) &&
-             ballPosY <= (racketP2Pos + racketSize) &&
+             ballPosY <= (racketP2Pos + racketP2Size) &&
              ballPosY >= racketP2Pos) {
              // set fly direction depending on where it hit the racket
              // (t is 0.5 if hit at top, 0 at center, -0.5 at bottom)
-             float t = ((ballPosY - racketP2Pos) / racketSize) - 0.5f;
+             float t = ((ballPosY - racketP2Pos) / racketP2Size) - 0.5f;
              ballDirX = -std::fabs(ballDirX);
              ballDirY = t;
+             if (racketP2Size > 1) racketP2Size--;
+             if ((racketP2Pos + racketP2Size) > rows) {
+                 racketP2Pos = rows - racketP2Size;
+             }
          }
 
          if (ballPosX < 0) {
              //left wall
              ++p2Score;
+             if (racketP1Size > 2) racketP1Size -= 2; else racketP1Size = 1;
+             if ((racketP1Pos + racketP1Size) > rows) {
+                 racketP1Pos = rows - racketP1Size;
+             }
              ballPosX = cols / 2;
              ballPosY = rows / 2;
              ballDirX = std::fabs(ballDirX);
@@ -146,6 +159,10 @@ public:
          if (ballPosX >= cols) {
              //right wall
              ++p1Score;
+             if (racketP2Size > 2) racketP2Size -= 2; else racketP2Size = 1;
+             if ((racketP2Pos + racketP2Size) > rows) {
+                 racketP2Pos = rows - racketP2Size;
+             }
              ballPosX = cols / 2;
              ballPosY = rows / 2;
              ballDirX = -std::fabs(ballDirX);
@@ -255,7 +272,8 @@ public:
     int p1Score = 0;
     int p2Score = 0;
     
-    int racketSize = 1;
+    int racketP1Size;
+    int racketP2Size;
     int racketP1Pos;
     int racketP1Speed = 0;
     int racketP2Pos;
