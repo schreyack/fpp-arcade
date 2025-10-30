@@ -150,27 +150,29 @@ public:
         drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
         // Draw four corner rooms with same size
-        int margin = 16; // Distance from edge to allow Pacman to fit through
+        int margin = 8; // Distance from edge to allow Pacman to fit through
         
-        // Ensure corner rooms fit within bounds
-        int cornerRoomWidth = roomWidth;
-        int cornerRoomHeight = roomHeight;
-        if (cornerRoomWidth + 2*margin > cols) cornerRoomWidth = cols - 2*margin;
-        if (cornerRoomHeight + 2*margin > rows) cornerRoomHeight = rows - 2*margin;
-        if (cornerRoomWidth < 8) cornerRoomWidth = 8;
-        if (cornerRoomHeight < 6) cornerRoomHeight = 6;
         
         // Top-left room
-        drawRoom(margin, margin, cornerRoomWidth, cornerRoomHeight, rand() % 4);
+        int roomStartX = margin;
+        int roomStartY = margin;
+
+        drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
         // Top-right room
-        drawRoom(cols - cornerRoomWidth - margin, margin, cornerRoomWidth, cornerRoomHeight, rand() % 4);
+        int roomStartX = cols - roomWidth - margin;
+        int roomStartY = margin;
+        drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
         // Bottom-left room
-        drawRoom(margin, rows - cornerRoomHeight - margin, cornerRoomWidth, cornerRoomHeight, rand() % 4);
+        int roomStartX = margin;
+        int roomStartY = rows - roomHeight - margin;
+        drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
         // Bottom-right room
-        drawRoom(cols - cornerRoomWidth - margin, rows - cornerRoomHeight - margin, cornerRoomWidth, cornerRoomHeight, rand() % 4);
+        int roomStartX = cols - roomWidth - margin;
+        int roomStartY = rows - roomHeight - margin;
+        drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
         // Place pellets at even coordinates (multiples of 2) except on walls
         for (int r = 0; r < rows; r += 2) {
