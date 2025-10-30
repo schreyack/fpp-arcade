@@ -39,53 +39,77 @@ public:
             grid[rows-1][c] = 2;
         }
 
-        // --- NEW MAZE: Explicit room and corridor layout ---
-        // Clear grid
+        // --- NEW ASYMMETRIC MAZE DESIGN ---
+        // Clear grid to walls
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                grid[r][c] = 2; // wall everywhere
+                grid[r][c] = 2;
             }
         }
-        int roomW = pacRadius*4; // room width
-        int roomH = pacRadius*4; // room height
-        int doorW = pacRadius*2+1; // door width
-        int doorH = pacRadius*2+1; // door height
-        // Place rooms in a grid
-        for (int ry = 0; ry < rows; ry += roomH+doorH) {
-            for (int rx = 0; rx < cols; rx += roomW+doorW) {
-                // Carve out room
-                for (int r = ry; r < ry+roomH && r < rows; r++) {
-                    for (int c = rx; c < rx+roomW && c < cols; c++) {
-                        grid[r][c] = 0;
-                    }
-                }
-                // Carve out doors to right
-                if (rx+roomW < cols) {
-                    int doorY = ry+roomH/2-doorH/2;
-                    for (int r = doorY; r < doorY+doorH && r < rows; r++) {
-                        for (int c = rx+roomW; c < rx+roomW+doorW && c < cols; c++) {
-                            grid[r][c] = 0;
-                        }
-                    }
-                }
-                // Carve out doors downward
-                if (ry+roomH < rows) {
-                    int doorX = rx+roomW/2-doorW/2;
-                    for (int r = ry+roomH; r < ry+roomH+doorH && r < rows; r++) {
-                        for (int c = doorX; c < doorX+doorW && c < cols; c++) {
-                            grid[r][c] = 0;
-                        }
-                    }
+        int roomW = pacRadius*4;
+        int roomH = pacRadius*4;
+        int doorW = pacRadius*2+1;
+        // Central hub room
+        int hubX = cols/2-roomW/2;
+        int hubY = rows/2-roomH/2;
+        for (int r = hubY; r < hubY+roomH; r++) {
+            for (int c = hubX; c < hubX+roomW; c++) {
+                grid[r][c] = 0;
+            }
+        }
+        // Four corner rooms
+        int corners[4][2] = {
+            {pacRadius+1, pacRadius+1},
+            {cols-roomW-pacRadius-1, pacRadius+1},
+            {pacRadius+1, rows-roomH-pacRadius-1},
+            {cols-roomW-pacRadius-1, rows-roomH-pacRadius-1}
+        };
+        for (int i = 0; i < 4; i++) {
+            int rx = corners[i][0], ry = corners[i][1];
+            for (int r = ry; r < ry+roomH; r++) {
+                for (int c = rx; c < rx+roomW; c++) {
+                    grid[r][c] = 0;
                 }
             }
         }
-        // Place pellets in room centers
-        for (int ry = 0; ry < rows; ry += roomH+doorH) {
-            for (int rx = 0; rx < cols; rx += roomW+doorW) {
-                int pr = ry+roomH/2;
-                int pc = rx+roomW/2;
-                if (pr < rows && pc < cols) grid[pr][pc] = 1;
+        // Corridors from hub to corners
+        for (int i = 0; i < 4; i++) {
+            int rx = corners[i][0]+roomW/2, ry = corners[i][1]+roomH/2;
+            // Horizontal corridor
+            int minX = std::min(rx, hubX+roomW/2), maxX = std::max(rx, hubX+roomW/2);
+            for (int c = minX; c <= maxX; c++) {
+                for (int w = -doorW/2; w <= doorW/2; w++) {
+                    int r = ry+w;
+                    if (r >= 0 && r < rows && c >= 0 && c < cols) grid[r][c] = 0;
+                }
             }
+            // Vertical corridor
+            int minY = std::min(ry, hubY+roomH/2), maxY = std::max(ry, hubY+roomH/2);
+            for (int r = minY; r <= maxY; r++) {
+                for (int w = -doorW/2; w <= doorW/2; w++) {
+                    int c = rx+w;
+                    if (r >= 0 && r < rows && c >= 0 && c < cols) grid[r][c] = 0;
+                }
+            }
+        }
+        // Winding corridor (snake) from top left to bottom right
+        int sx = pacRadius+1, sy = pacRadius+1;
+        for (int step = 0; step < std::max(cols, rows); step++) {
+            int r = sy+step, c = sx+step;
+            for (int w = -doorW/2; w <= doorW/2; w++) {
+                if (r >= 0 && r < rows && c+w >= 0 && c+w < cols) grid[r][c+w] = 0;
+                if (c >= 0 && c < cols && r+w >= 0 && r+w < rows) grid[r+w][c] = 0;
+            }
+        }
+        // Place pellets in each room center and along corridors
+        for (int i = 0; i < 4; i++) {
+            int pr = corners[i][1]+roomH/2, pc = corners[i][0]+roomW/2;
+            if (pr < rows && pc < cols) grid[pr][pc] = 1;
+        }
+        grid[hubY+roomH/2][hubX+roomW/2] = 1;
+        for (int step = 0; step < std::max(cols, rows); step+=doorW*2) {
+            int r = sy+step, c = sx+step;
+            if (r < rows && c < cols) grid[r][c] = 1;
         }
 
         // Remove all border walls to guarantee open edge passages
