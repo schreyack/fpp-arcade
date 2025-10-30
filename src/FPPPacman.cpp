@@ -379,16 +379,20 @@ public:
             }
         }
         
-        // Draw special pellets as 4x4 blocks
+        // Draw special pellets as 4x4 blocks with circular shape
         for (auto &p : specialPellets) {
             int tlx = p.first;
             int tly = p.second;
             for (int dr = 0; dr < 4; dr++) {
                 for (int dc = 0; dc < 4; dc++) {
-                    int px = tlx + dc;
-                    int py = tly + dr;
-                    if (px < cols && py < rows) {
-                        outputPixel(px, py, 255, 0, 255);
+                    double dx = dc - 1.5;
+                    double dy = dr - 1.5;
+                    if (dx*dx + dy*dy <= 3.0) {
+                        int px = tlx + dc;
+                        int py = tly + dr;
+                        if (px < cols && py < rows) {
+                            outputPixel(px, py, 255, 0, 255);
+                        }
                     }
                 }
             }
