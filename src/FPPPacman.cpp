@@ -55,8 +55,8 @@ public:
             for (int c = startX; c <= endX; c++) {
                 if (r < rows && c < cols) {
                     if (doorWall == 0) { // Top wall has doorway
-                        int doorStart = startX + width/2 - 2; // 4 units wide door
-                        int doorEnd = startX + width/2 + 2;
+                        int doorStart = startX + width/2 - 3; // 7 units wide door
+                        int doorEnd = startX + width/2 + 3;
                         if (c < doorStart || c > doorEnd) {
                             grid[r][c] = 2;
                         }
@@ -71,8 +71,8 @@ public:
             for (int c = startX; c <= endX; c++) {
                 if (r >= 0 && c < cols) {
                     if (doorWall == 1) { // Bottom wall has doorway
-                        int doorStart = startX + width/2 - 2; // 4 units wide door
-                        int doorEnd = startX + width/2 + 2;
+                        int doorStart = startX + width/2 - 3; // 7 units wide door
+                        int doorEnd = startX + width/2 + 3;
                         if (c < doorStart || c > doorEnd) {
                             grid[r][c] = 2;
                         }
@@ -87,8 +87,8 @@ public:
             for (int r = startY; r <= endY; r++) {
                 if (c < cols && r < rows) {
                     if (doorWall == 2) { // Left wall has doorway
-                        int doorStart = startY + height/2 - 2; // 4 units wide door
-                        int doorEnd = startY + height/2 + 2;
+                        int doorStart = startY + height/2 - 3; // 7 units wide door
+                        int doorEnd = startY + height/2 + 3;
                         if (r < doorStart || r > doorEnd) {
                             grid[r][c] = 2;
                         }
@@ -103,8 +103,8 @@ public:
             for (int r = startY; r <= endY; r++) {
                 if (c >= 0 && r < rows) {
                     if (doorWall == 3) { // Right wall has doorway
-                        int doorStart = startY + height/2 - 2; // 4 units wide door
-                        int doorEnd = startY + height/2 + 2;
+                        int doorStart = startY + height/2 - 3; // 7 units wide door
+                        int doorEnd = startY + height/2 + 3;
                         if (r < doorStart || r > doorEnd) {
                             grid[r][c] = 2;
                         }
