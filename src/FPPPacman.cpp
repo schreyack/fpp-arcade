@@ -175,17 +175,10 @@ public:
                     // wall - bright blue
                     outputPixel(gx, gy, 0, 0, 255);
                 } else if (grid[r][c] == 1) {
-                    // pellet - draw as a small circle (radius 1 pixel from center)
+                    // pellet - draw as bright dot
                     // Only draw pellet if Pacman is not overlapping (within pacRadius)
                     if (!(abs(pacmanX-c) <= pacRadius && abs(pacmanY-r) <= pacRadius)) {
-                        // Draw pellet as small filled circle
-                        for (int dx = -1; dx <= 1; dx++) {
-                            for (int dy = -1; dy <= 1; dy++) {
-                                if (dx*dx + dy*dy <= 1) {
-                                    outputPixel(gx+dx, gy+dy, 255, 200, 0);
-                                }
-                            }
-                        }
+                        outputPixel(gx, gy, 255, 200, 0);
                     }
                 }
             }
