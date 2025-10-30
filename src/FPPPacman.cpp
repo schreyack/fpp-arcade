@@ -179,9 +179,40 @@ public:
         return NAME;
     }
 
+    void drawPacman(int x, int y, int dir) {
+        // Draw Pacman as a circle with a mouth (arc)
+        int r = 1; // radius in grid units
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dy = -r; dy <= r; dy++) {
+                if (dx*dx + dy*dy <= r*r) {
+                    // mouth opening: skip pixels in direction of movement
+                    bool mouth = false;
+                    if (dir == 0 && dx < 0 && abs(dy) < r) mouth = true; // left
+                    if (dir == 1 && dy < 0 && abs(dx) < r) mouth = true; // up
+                    if (dir == 2 && dx > 0 && abs(dy) < r) mouth = true; // right
+                    if (dir == 3 && dy > 0 && abs(dx) < r) mouth = true; // down
+                    if (!mouth) outputPixel(x+dx, y+dy, 255, 255, 0);
+                }
+            }
+        }
+    }
+    void drawGhost(int x, int y, int r, int g, int b) {
+        // Draw ghost as a rectangle with eyes
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                outputPixel(x+dx, y+dy, r, g, b);
+            }
+        }
+        // Eyes (white)
+        outputPixel(x-1, y-1, 255,255,255);
+        outputPixel(x+1, y-1, 255,255,255);
+        // Pupils (black)
+        outputPixel(x-1, y-1, 0,0,0);
+        outputPixel(x+1, y-1, 0,0,0);
+    }
+
     void CopyToModel() {
         model->clearOverlayBuffer();
-
         // draw grid
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
@@ -191,22 +222,20 @@ public:
                     outputPixel(gx, gy, 0, 0, 255);
                 } else if (grid[r][c] == 1) {
                     // pellet (very dim yellow)
-                    outputPixel(gx, gy, 48, 48, 0);
+                    // Only draw pellet if Pacman is not overlapping
+                    if (!(abs(pacmanX-gx)<=1 && abs(pacmanY-gy)<=1))
+                        outputPixel(gx, gy, 48, 48, 0);
                 }
             }
         }
-
-        // pacman
-        // draw Pac-Man in bright yellow
-        outputPixel(pacmanX, pacmanY, 255, 255, 0);
-
-        // ghosts
+        // draw Pacman as scaled circle with mouth
+        drawPacman(pacmanX, pacmanY, pacDir);
+        // draw ghosts
         for (auto &gh : ghosts) {
-            outputPixel(gh.x, gh.y, 255, 0, 0);
+            drawGhost(gh.x, gh.y, 255, 0, 0);
         }
         // player-controlled ghost (draw in cyan)
-        outputPixel(playerGhost.x, playerGhost.y, 0, 255, 255);
-
+        drawGhost(playerGhost.x, playerGhost.y, 0, 255, 255);
         model->flushOverlayBuffer();
     }
 
