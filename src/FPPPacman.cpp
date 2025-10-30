@@ -150,7 +150,7 @@ public:
         drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
         // Draw four corner rooms with same size
-        int margin = 4; // Distance from edge to allow Pacman to fit through
+        int margin = 8; // Distance from edge to allow Pacman to fit through
         
         // Ensure corner rooms fit within bounds
         int cornerRoomWidth = roomWidth;
@@ -191,25 +191,45 @@ public:
         
         for (int i = 0; i < numGhosts; i++) {
             Ghost g;
-            // Random position, but at least 8 units away from Pacman (Euclidean distance) and not on walls
+            // Random position, but at least 8 units away from Pacman (Euclidean distance), not on walls, and not too close to other ghosts
             int attempts = 0;
             do {
                 g.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
                 g.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
                 attempts++;
-            } while (((g.x - pacmanX)*(g.x - pacmanX) + (g.y - pacmanY)*(g.y - pacmanY) < 64 || grid[g.y][g.x] == 2) && attempts < 20);
+                // Check distance from existing ghosts
+                bool tooClose = false;
+                for (size_t j = 0; j < ghosts.size(); j++) {
+                    int dx = g.x - ghosts[j].x;
+                    int dy = g.y - ghosts[j].y;
+                    if (dx*dx + dy*dy < 64) { // Less than 8 units apart
+                        tooClose = true;
+                        break;
+                    }
+                }
+            } while ((((g.x - pacmanX)*(g.x - pacmanX) + (g.y - pacmanY)*(g.y - pacmanY) < 64 || grid[g.y][g.x] == 2) || tooClose) && attempts < 20);
             
             g.dir = rand() % 4;
             ghosts.push_back(g);
         }
         
-        // Place player-controlled ghost at random location (avoiding Pacman and walls)
+        // Place player-controlled ghost at random location (avoiding Pacman and walls and other ghosts)
         int attempts = 0;
         do {
             playerGhost.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
             playerGhost.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
             attempts++;
-        } while (((playerGhost.x - pacmanX)*(playerGhost.x - pacmanX) + (playerGhost.y - pacmanY)*(playerGhost.y - pacmanY) < 64 || grid[playerGhost.y][playerGhost.x] == 2) && attempts < 20);
+            // Check distance from existing ghosts
+            bool tooClose = false;
+            for (size_t j = 0; j < ghosts.size(); j++) {
+                int dx = playerGhost.x - ghosts[j].x;
+                int dy = playerGhost.y - ghosts[j].y;
+                if (dx*dx + dy*dy < 64) { // Less than 8 units apart
+                    tooClose = true;
+                    break;
+                }
+            }
+        } while ((((playerGhost.x - pacmanX)*(playerGhost.x - pacmanX) + (playerGhost.y - pacmanY)*(playerGhost.y - pacmanY) < 64 || grid[playerGhost.y][playerGhost.x] == 2) || tooClose) && attempts < 20);
         playerGhost.dir = 0;
         playerGhostSpeedBoostTimer = 0;
 
@@ -363,25 +383,13 @@ public:
     bool isPositionOccupied(int x, int y, int excludeIndex = -1) {
         // Check if position is occupied by any ghost (except optionally excluded one)
         for (size_t i = 0; i < ghosts.size(); i++) {
-            if ((int)i != excludeIndex) {
-                int dx = ghosts[i].x - x;
-                int dy = ghosts[i].y - y;
-                int distanceSquared = dx*dx + dy*dy;
-                int radiusSum = ghostSize/2 + ghostSize/2; // Both have same radius
-                if (distanceSquared <= radiusSum * radiusSum) {
-                    return true;
-                }
+            if ((int)i != excludeIndex && ghosts[i].x == x && ghosts[i].y == y) {
+                return true;
             }
         }
         // Also check player ghost
-        if (excludeIndex != -2) {
-            int dx = playerGhost.x - x;
-            int dy = playerGhost.y - y;
-            int distanceSquared = dx*dx + dy*dy;
-            int radiusSum = ghostSize/2 + ghostSize/2;
-            if (distanceSquared <= radiusSum * radiusSum) {
-                return true;
-            }
+        if (excludeIndex != -2 && playerGhost.x == x && playerGhost.y == y) {
+            return true;
         }
         return false;
     }
