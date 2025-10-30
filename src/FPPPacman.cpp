@@ -263,6 +263,18 @@ public:
         model->flushOverlayBuffer();
     }
 
+    bool canMoveTo(int x, int y, int radius) {
+        // Check bounding box for wall collisions
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                int nx = x+dx, ny = y+dy;
+                if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return false;
+                if ((dx*dx + dy*dy <= radius*radius) && grid[ny][nx] == 2) return false;
+            }
+        }
+        return true;
+    }
+
     void movePacman() {
         int nx = pacmanX; int ny = pacmanY;
         switch (pacDir) {
@@ -271,8 +283,7 @@ public:
             case 2: nx++; break; // right
             case 3: ny++; break; // down
         }
-        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return;
-        if (grid[ny][nx] != 2) {
+        if (canMoveTo(nx, ny, pacRadius)) {
             pacmanX = nx; pacmanY = ny;
             // eat pellet
             if (grid[ny][nx] == 1) {
@@ -283,15 +294,13 @@ public:
 
     void moveGhosts() {
         for (auto &gh : ghosts) {
-            // simple random move
             int bestDir = gh.dir;
             int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}};
             std::vector<int> opts;
             for (int d = 0; d < 4; d++) {
                 int nx = gh.x + dirs[d][0];
                 int ny = gh.y + dirs[d][1];
-                if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-                if (grid[ny][nx] != 2) opts.push_back(d);
+                if (canMoveTo(nx, ny, ghostSize/2)) opts.push_back(d);
             }
             if (!opts.empty()) {
                 int pick = opts[rand() % opts.size()];
@@ -304,7 +313,7 @@ public:
         int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}};
         int nx = playerGhost.x + dirs[playerGhostDir][0];
         int ny = playerGhost.y + dirs[playerGhostDir][1];
-        if (nx >= 0 && ny >= 0 && nx < cols && ny < rows && grid[ny][nx] != 2) {
+        if (canMoveTo(nx, ny, ghostSize/2)) {
             playerGhost.x = nx;
             playerGhost.y = ny;
             playerGhost.dir = playerGhostDir;
