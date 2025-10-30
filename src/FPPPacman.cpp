@@ -194,7 +194,7 @@ public:
         }
         
         // Replace some regular pellets with special pellets (2x2 blocks)
-        int numSpecial = 1; // 1 special pellets
+        int numSpecial = rand() % 2 + 1; // 1-2 special pellets
         for (int i = 0; i < numSpecial; i++) {
             int attempts = 0;
             bool placed = false;
@@ -223,7 +223,7 @@ public:
         
         // Place ghosts in random locations (avoiding Pacman and walls)
         ghosts.clear();
-        int numGhosts = rand() % 3 + 1;
+        int numGhosts = rand() % 2 + 1;
         
         for (int i = 0; i < numGhosts; i++) {
             Ghost g;
