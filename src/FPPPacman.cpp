@@ -128,8 +128,7 @@ public:
             grid[r].resize(cols, 0); // 0 = empty
         }
         
-        // Create central room sized to contain approximately 15x9 pellets
-        // Since pellets are every 2 units, 15 pellets wide = 30 units, 9 pellets high = 18 units
+        // Calculate central room size
         int targetPelletsWide = 15;
         int targetPelletsHigh = 9;
         int pelletSpacing = 2;
@@ -144,6 +143,27 @@ public:
         
         int roomWidth = (targetWidth < maxInteriorWidth) ? targetWidth : maxInteriorWidth;
         int roomHeight = (targetHeight < maxInteriorHeight) ? targetHeight : maxInteriorHeight;
+        
+        // Create four corner rooms, same size as central
+        // Top-left room
+        int tlStartX = 8;
+        int tlStartY = 8;
+        drawRoom(tlStartX, tlStartY, roomWidth, roomHeight, rand() % 4);
+        
+        // Top-right room
+        int trStartX = cols - 8 - roomWidth;
+        int trStartY = 8;
+        drawRoom(trStartX, trStartY, roomWidth, roomHeight, rand() % 4);
+        
+        // Bottom-left room
+        int blStartX = 8;
+        int blStartY = rows - 8 - roomHeight;
+        drawRoom(blStartX, blStartY, roomWidth, roomHeight, rand() % 4);
+        
+        // Bottom-right room
+        int brStartX = cols - 8 - roomWidth;
+        int brStartY = rows - 8 - roomHeight;
+        drawRoom(brStartX, brStartY, roomWidth, roomHeight, rand() % 4);
         
         // Draw central room
         int roomStartX = (cols - roomWidth) / 2;
