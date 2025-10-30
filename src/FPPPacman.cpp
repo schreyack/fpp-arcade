@@ -572,7 +572,7 @@ public:
                 outputString("GAME", cols/2 - 4, rows/2-3);
                 outputString("OVER", cols/2 - 4, rows/2+1);
                 model->flushOverlayBuffer();
-                return 2000;
+                return 5000;
             }
         }
         // check collision with player-controlled ghost
@@ -581,7 +581,7 @@ public:
             outputString("GAME", cols/2 - 4, rows/2-3);
             outputString("OVER", cols/2 - 4, rows/2+1);
             model->flushOverlayBuffer();
-            return 2000;
+            return 5000;
         }
 
         // check win: all pellets eaten
@@ -598,7 +598,7 @@ public:
             outputString("YOU", cols/2 - 3, rows/2-3);
             outputString("WIN", cols/2 - 3, rows/2+1);
             model->flushOverlayBuffer();
-            return 2000;
+            return 5000;
         }
 
         CopyToModel();
