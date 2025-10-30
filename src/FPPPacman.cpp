@@ -47,22 +47,41 @@ public:
         if (cols < 8) cols = 8;
         if (rows < 8) rows = 8;
 
-        // Initialize grid
+        // Initialize grid with pellets
         grid.resize(rows);
         for (int r = 0; r < rows; r++) {
             grid[r].resize(cols, 1); // 1 = pellet
         }
         
-        // Place Pacman in a guaranteed open area (center)
-        pacmanX = cols/2;
-        pacmanY = rows/2;
-        while (!canMoveTo(pacmanX, pacmanY, pacRadius)) {
-            pacmanX++;
-            if (pacmanX >= cols - pacRadius) {
-                pacmanX = pacRadius + 1;
-                pacmanY++;
+        // Create central room with doorway
+        int roomSize = 6; // 6x6 room
+        int roomStartX = (cols - roomSize) / 2;
+        int roomStartY = (rows - roomSize) / 2;
+        int roomEndX = roomStartX + roomSize - 1;
+        int roomEndY = roomStartY + roomSize - 1;
+        
+        // Top wall of room
+        for (int c = roomStartX; c <= roomEndX; c++) {
+            grid[roomStartY][c] = 2;
+        }
+        // Bottom wall of room
+        for (int c = roomStartX; c <= roomEndX; c++) {
+            grid[roomEndY][c] = 2;
+        }
+        // Left wall of room
+        for (int r = roomStartY; r <= roomEndY; r++) {
+            grid[r][roomStartX] = 2;
+        }
+        // Right wall with doorway (opening in middle)
+        for (int r = roomStartY; r <= roomEndY; r++) {
+            if (r < roomStartY + 2 || r > roomEndY - 2) { // Leave middle open for doorway
+                grid[r][roomEndX] = 2;
             }
         }
+        
+        // Place Pacman in the center of the central room
+        pacmanX = cols / 2;
+        pacmanY = rows / 2;
         
         // Place ghosts in random locations (avoiding Pacman)
         ghosts.clear();
@@ -182,6 +201,15 @@ public:
 
     void CopyToModel() {
         model->clearOverlayBuffer();
+        
+        // Draw walls first (behind everything)
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (grid[r][c] == 2) { // Wall
+                    outputPixel(c, r, 0, 0, 100); // Dark blue walls
+                }
+            }
+        }
         
         // Draw pellets in a grid pattern (if not eaten)
         for (int r = 0; r < rows; r += 2) {
@@ -340,7 +368,9 @@ public:
         int totalPellets = 0;
         for (int r = 0; r < rows; r += 2) {
             for (int c = 0; c < cols; c += 2) {
-                totalPellets++;
+                if (grid[r][c] != 2) { // Only count pellets not on walls
+                    totalPellets++;
+                }
             }
         }
         if ((int)eatenPellets.size() >= totalPellets) {
