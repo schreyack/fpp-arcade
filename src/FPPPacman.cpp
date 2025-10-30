@@ -157,31 +157,31 @@ public:
         pacmanX = cols / 2;
         pacmanY = rows / 2;
         
-        // Place ghosts in random locations (avoiding Pacman)
+        // Place ghosts in random locations (avoiding Pacman and walls)
         ghosts.clear();
         int numGhosts = 3 + (rand() % 4);
         
         for (int i = 0; i < numGhosts; i++) {
             Ghost g;
-            // Random position, but at least 5 units away from Pacman
+            // Random position, but at least 5 units away from Pacman and not on walls
             int attempts = 0;
             do {
                 g.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
                 g.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
                 attempts++;
-            } while ((abs(g.x - pacmanX) + abs(g.y - pacmanY) < 5) && attempts < 20);
+            } while (((abs(g.x - pacmanX) + abs(g.y - pacmanY) < 5) || grid[g.y][g.x] == 2) && attempts < 20);
             
             g.dir = rand() % 4;
             ghosts.push_back(g);
         }
         
-        // Place player-controlled ghost at random location (avoiding Pacman)
+        // Place player-controlled ghost at random location (avoiding Pacman and walls)
         int attempts = 0;
         do {
             playerGhost.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
             playerGhost.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
             attempts++;
-        } while ((abs(playerGhost.x - pacmanX) + abs(playerGhost.y - pacmanY) < 5) && attempts < 20);
+        } while (((abs(playerGhost.x - pacmanX) + abs(playerGhost.y - pacmanY) < 5) || grid[playerGhost.y][playerGhost.x] == 2) && attempts < 20);
         playerGhost.dir = 0;
 
     }
@@ -191,13 +191,13 @@ public:
         return NAME;
     }
 
-    bool canMoveTo(int x, int y, int radius) {
-        // Check bounding box for wall collisions
+    bool canMoveTo(int x, int y, int radius, bool isGhost = false) {
+        // Check bounding box for wall collisions (ghosts can pass through walls)
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dy = -radius; dy <= radius; dy++) {
                 int nx = x+dx, ny = y+dy;
                 if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return false;
-                if ((dx*dx + dy*dy <= radius*radius) && grid[ny][nx] == 2) return false;
+                if (!isGhost && (dx*dx + dy*dy <= radius*radius) && grid[ny][nx] == 2) return false;
             }
         }
         return true;
@@ -367,7 +367,7 @@ public:
             for (int d = 0; d < 4; d++) {
                 int nx = gh.x + dirs[d][0];
                 int ny = gh.y + dirs[d][1];
-                if (canMoveTo(nx, ny, ghostSize/2) && !isPositionOccupied(nx, ny, i)) {
+                if (canMoveTo(nx, ny, ghostSize/2, true) && !isPositionOccupied(nx, ny, i)) {
                     opts.push_back(d);
                 }
             }
@@ -382,7 +382,7 @@ public:
         int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}};
         int nx = playerGhost.x + dirs[playerGhostDir][0];
         int ny = playerGhost.y + dirs[playerGhostDir][1];
-        if (canMoveTo(nx, ny, ghostSize/2) && !isPositionOccupied(nx, ny, -2)) {
+        if (canMoveTo(nx, ny, ghostSize/2, true) && !isPositionOccupied(nx, ny, -2)) {
             playerGhost.x = nx;
             playerGhost.y = ny;
             playerGhost.dir = playerGhostDir;
