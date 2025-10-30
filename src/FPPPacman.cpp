@@ -113,6 +113,12 @@ public:
                 }
             }
         }
+        
+        // Print roomStartX and roomStartY in the center of the room
+        int centerX = startX + width / 2;
+        int centerY = startY + height / 2;
+        std::string coordStr = std::to_string(startX) + "," + std::to_string(startY);
+        outputString(coordStr, centerX - coordStr.length()/2, centerY);
     }
 
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
