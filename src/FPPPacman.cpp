@@ -42,7 +42,7 @@ public:
     bool GameOn = true;
     bool Paused = false;
     bool WaitingUntilOutput = false;
-    long long timer = 100;
+    long long timer = 75;
 
     void drawRoom(int startX, int startY, int width, int height, int doorWall = -1) {
         int wallThickness = 2;
@@ -180,10 +180,10 @@ public:
             }
         }
         
-        // Change perimeter pellets to walls
+        // Change perimeter to walls
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                if ((r == 0 || r == rows - 1 || c == 0 || c == cols - 1) && grid[r][c] == 1) {
+                if (r == 0 || r == rows - 1 || c == 0 || c == cols - 1) {
                     grid[r][c] = 2;
                 }
             }
