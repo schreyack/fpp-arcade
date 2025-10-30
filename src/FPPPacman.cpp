@@ -46,6 +46,7 @@ public:
     long long timer = 75;
     int speedBoostTimer = 0;
     int endTimer = 0;
+    std::string endMessage = "";
 
     void drawRoom(int startX, int startY, int width, int height, int doorWall = -1) {
         int wallThickness = 2;
@@ -400,22 +401,36 @@ public:
         }
         
         // draw Pacman as scaled circle with mouth
-        drawPacman(pacmanX, pacmanY, pacDir);
-        // draw ghosts
-        for (auto &gh : ghosts) {
-            drawGhost(gh.x, gh.y, 255, 0, 0);
+        if (GameOn) {
+            drawPacman(pacmanX, pacmanY, pacDir);
+            // draw ghosts
+            for (auto &gh : ghosts) {
+                drawGhost(gh.x, gh.y, 255, 0, 0);
+            }
+            // player-controlled ghost (draw in cyan)
+            drawGhost(playerGhost.x, playerGhost.y, 0, 255, 255);
         }
-        // player-controlled ghost (draw in cyan)
-        drawGhost(playerGhost.x, playerGhost.y, 0, 255, 255);
+        
+        if (!GameOn && endTimer > 0) {
+            if (endMessage == "GAME OVER") {
+                outputString("GAME", cols/2 - 4, rows/2-3);
+                outputString("OVER", cols/2 - 4, rows/2+3);
+            } else if (endMessage == "YOU WIN") {
+                outputString("YOU", cols/2 - 3, rows/2-3);
+                outputString("WIN", cols/2 - 3, rows/2+3);
+            }
+        }
+        
         model->flushOverlayBuffer();
     }
 
     void eatPelletsAtPosition(int x, int y) {
-        // Eat pellets within Pacman's radius (rounded to pellet grid)
-        for (int pr = y - 2; pr <= y + 2; pr += 2) {
-            for (int pc = x - 2; pc <= x + 2; pc += 2) {
-                if (pr >= 0 && pr < rows && pc >= 0 && pc < cols &&
-                    grid[pr][pc] == 1 && eatenPellets.find({pc, pr}) == eatenPellets.end()) {
+        // Eat pellets within Pacman's radius (on pellet grid)
+        for (int pr = std::max(0, y - 3); pr <= std::min(rows - 1, y + 3); pr++) {
+            if (pr % 2 != 0) continue; // only even rows
+            for (int pc = std::max(0, x - 3); pc <= std::min(cols - 1, x + 3); pc++) {
+                if (pc % 2 != 0) continue; // only even columns
+                if (grid[pr][pc] == 1 && eatenPellets.find({pc, pr}) == eatenPellets.end()) {
                     eatenPellets.insert({pc, pr});
                 }
             }
@@ -579,6 +594,7 @@ public:
             if (checkCollision(pacmanX, pacmanY, pacRadius, gh.x, gh.y, ghostSize/2)) {
                 GameOn = false;
                 endTimer = 67;
+                endMessage = "GAME OVER";
                 outputString("GAME", cols/2 - 4, rows/2-3);
                 outputString("OVER", cols/2 - 4, rows/2+3);
                 model->flushOverlayBuffer();
@@ -589,6 +605,7 @@ public:
         if (checkCollision(pacmanX, pacmanY, pacRadius, playerGhost.x, playerGhost.y, ghostSize/2)) {
             GameOn = false;
             endTimer = 67;
+            endMessage = "GAME OVER";
             outputString("GAME", cols/2 - 4, rows/2-3);
             outputString("OVER", cols/2 - 4, rows/2+3);
             model->flushOverlayBuffer();
@@ -607,6 +624,7 @@ public:
         if (pelletsLeft == 0 && specialPellets.empty()) {
             GameOn = false;
             endTimer = 67;
+            endMessage = "YOU WIN";
             outputString("YOU", cols/2 - 3, rows/2-3);
             outputString("WIN", cols/2 - 3, rows/2+3);
             model->flushOverlayBuffer();
