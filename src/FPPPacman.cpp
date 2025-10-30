@@ -153,9 +153,9 @@ public:
         int margin = 16; // Distance from edge to allow Pacman to fit through
         
         
-        // Top-left room - centered in top-left quadrant
-        int roomStartX = std::max(0, cols/4 - roomWidth/2);
-        int roomStartY = std::max(0, rows/4 - roomHeight/2);
+        // Top-left room - moved towards center
+        int roomStartX = 2;
+        int roomStartY = 2;
 
         drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
