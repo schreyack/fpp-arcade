@@ -26,6 +26,7 @@ public:
         if (initialSize < 3) {
             initialSize = 3;
         }
+        initialRacketSize = initialSize;
         racketP1Size = racketP2Size = initialSize;
         racketP1Pos = racketP2Pos = (rows - initialSize)/2;
         offsetX = 0;
@@ -123,7 +124,7 @@ public:
              float t = ((ballPosY - racketP1Pos) / racketP1Size) - 0.5f;
              ballDirX = std::fabs(ballDirX);
              ballDirY = t;
-             if (racketP1Size > 1) racketP1Size--;
+             if (racketP1Size > 2) racketP1Size--;
              if ((racketP1Pos + racketP1Size) > rows) {
                  racketP1Pos = rows - racketP1Size;
              }
@@ -136,7 +137,7 @@ public:
              float t = ((ballPosY - racketP2Pos) / racketP2Size) - 0.5f;
              ballDirX = -std::fabs(ballDirX);
              ballDirY = t;
-             if (racketP2Size > 1) racketP2Size--;
+             if (racketP2Size > 2) racketP2Size--;
              if ((racketP2Pos + racketP2Size) > rows) {
                  racketP2Pos = rows - racketP2Size;
              }
@@ -145,9 +146,15 @@ public:
          if (ballPosX < 0) {
              //left wall
              ++p2Score;
-             if (racketP1Size > 2) racketP1Size -= 2; else racketP1Size = 1;
+             if (racketP1Size > 3) racketP1Size -= 2; else racketP1Size = 2;
              if ((racketP1Pos + racketP1Size) > rows) {
                  racketP1Pos = rows - racketP1Size;
+             }
+             if (racketP2Size < initialRacketSize) {
+                 racketP2Size++;
+                 if ((racketP2Pos + racketP2Size) > rows) {
+                     racketP2Pos = rows - racketP2Size;
+                 }
              }
              ballPosX = cols / 2;
              ballPosY = rows / 2;
@@ -159,9 +166,15 @@ public:
          if (ballPosX >= cols) {
              //right wall
              ++p1Score;
-             if (racketP2Size > 2) racketP2Size -= 2; else racketP2Size = 1;
+             if (racketP2Size > 3) racketP2Size -= 2; else racketP2Size = 2;
              if ((racketP2Pos + racketP2Size) > rows) {
                  racketP2Pos = rows - racketP2Size;
+             }
+             if (racketP1Size < initialRacketSize) {
+                 racketP1Size++;
+                 if ((racketP1Pos + racketP1Size) > rows) {
+                     racketP1Pos = rows - racketP1Size;
+                 }
              }
              ballPosX = cols / 2;
              ballPosY = rows / 2;
@@ -272,6 +285,7 @@ public:
     int p1Score = 0;
     int p2Score = 0;
     
+    int initialRacketSize;
     int racketP1Size;
     int racketP2Size;
     int racketP1Pos;
