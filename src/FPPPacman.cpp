@@ -410,12 +410,14 @@ public:
     }
 
     void eatPelletsAtPosition(int x, int y) {
-        // Eat pellet at Pacman's current position (rounded to nearest pellet grid)
-        int pelletX = (x + 1) / 2 * 2; // Round to nearest even coordinate
-        int pelletY = (y + 1) / 2 * 2;
-        
-        if (pelletX >= 0 && pelletX < cols && pelletY >= 0 && pelletY < rows) {
-            eatenPellets.insert({pelletX, pelletY});
+        // Eat pellets within Pacman's radius (rounded to pellet grid)
+        for (int pr = y - 2; pr <= y + 2; pr += 2) {
+            for (int pc = x - 2; pc <= x + 2; pc += 2) {
+                if (pr >= 0 && pr < rows && pc >= 0 && pc < cols &&
+                    grid[pr][pc] == 1 && eatenPellets.find({pc, pr}) == eatenPellets.end()) {
+                    eatenPellets.insert({pc, pr});
+                }
+            }
         }
     }
 
