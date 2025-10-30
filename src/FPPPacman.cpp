@@ -127,29 +127,50 @@ public:
             grid[r].resize(cols, 0); // 0 = empty
         }
         
-        // Create four corner rooms
-        // Room size: approximately 7x5 pellets = 14x10 units
-        int roomWidth = 14;
-        int roomHeight = 10;
+        // Create central room sized to contain approximately 15x9 pellets
+        // Since pellets are every 2 units, 15 pellets wide = 30 units, 9 pellets high = 18 units
+        int targetPelletsWide = 15;
+        int targetPelletsHigh = 9;
+        int pelletSpacing = 2;
+        
+        int targetWidth = targetPelletsWide * pelletSpacing;
+        int targetHeight = targetPelletsHigh * pelletSpacing;
+        
+        // Adjust to fit within grid bounds with wall thickness
+        int wallThickness = 2;
+        int maxInteriorWidth = cols - 2 * wallThickness;
+        int maxInteriorHeight = rows - 2 * wallThickness;
+        
+        int roomWidth = (targetWidth < maxInteriorWidth) ? targetWidth : maxInteriorWidth;
+        int roomHeight = (targetHeight < maxInteriorHeight) ? targetHeight : maxInteriorHeight;
+        
+        // Draw central room
+        int roomStartX = (cols - roomWidth) / 2;
+        int roomStartY = (rows - roomHeight) / 2;
+        drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
+        
+        // Draw four corner rooms with same size
         int margin = 4; // Distance from edge to allow Pacman to fit through
         
-        // Ensure rooms fit within bounds
-        if (roomWidth + 2*margin > cols) roomWidth = cols - 2*margin;
-        if (roomHeight + 2*margin > rows) roomHeight = rows - 2*margin;
-        if (roomWidth < 8) roomWidth = 8;
-        if (roomHeight < 6) roomHeight = 6;
+        // Ensure corner rooms fit within bounds
+        int cornerRoomWidth = roomWidth;
+        int cornerRoomHeight = roomHeight;
+        if (cornerRoomWidth + 2*margin > cols) cornerRoomWidth = cols - 2*margin;
+        if (cornerRoomHeight + 2*margin > rows) cornerRoomHeight = rows - 2*margin;
+        if (cornerRoomWidth < 8) cornerRoomWidth = 8;
+        if (cornerRoomHeight < 6) cornerRoomHeight = 6;
         
         // Top-left room
-        drawRoom(margin, margin, roomWidth, roomHeight, rand() % 4);
+        drawRoom(margin, margin, cornerRoomWidth, cornerRoomHeight, rand() % 4);
         
         // Top-right room
-        drawRoom(cols - roomWidth - margin, margin, roomWidth, roomHeight, rand() % 4);
+        drawRoom(cols - cornerRoomWidth - margin, margin, cornerRoomWidth, cornerRoomHeight, rand() % 4);
         
         // Bottom-left room
-        drawRoom(margin, rows - roomHeight - margin, roomWidth, roomHeight, rand() % 4);
+        drawRoom(margin, rows - cornerRoomHeight - margin, cornerRoomWidth, cornerRoomHeight, rand() % 4);
         
         // Bottom-right room
-        drawRoom(cols - roomWidth - margin, rows - roomHeight - margin, roomWidth, roomHeight, rand() % 4);
+        drawRoom(cols - cornerRoomWidth - margin, rows - cornerRoomHeight - margin, cornerRoomWidth, cornerRoomHeight, rand() % 4);
         
         // Place pellets at even coordinates (multiples of 2) except on walls
         for (int r = 0; r < rows; r += 2) {
@@ -160,9 +181,9 @@ public:
             }
         }
         
-        // Place Pacman in the center of the top-left room
-        pacmanX = margin + roomWidth / 2;
-        pacmanY = margin + roomHeight / 2;
+        // Place Pacman in the center of the central room
+        pacmanX = cols / 2;
+        pacmanY = rows / 2;
         
         // Place ghosts in random locations (avoiding Pacman and walls)
         ghosts.clear();
