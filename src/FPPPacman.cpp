@@ -24,19 +24,79 @@ public:
         if (cols < 8) cols = 8;
         if (rows < 8) rows = 8;
 
-        // Simple maze: all open space with scattered walls
+        // Designed maze with proper corridors sized for large sprites
         grid.resize(rows);
         for (int r = 0; r < rows; r++) {
-            grid[r].resize(cols, 1); // 1 = pellet (all open)
+            grid[r].resize(cols, 0); // 0 = empty
         }
         
-        // Place some walls to create structure (sparse pattern)
+        // Fill everything with pellets first
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                // Place walls in a pattern that doesn't block movement
-                if ((r % 6 == 0 && c % 8 == 0) || (r % 7 == 3 && c % 9 == 4)) {
-                    grid[r][c] = 2;
+                grid[r][c] = 1;
+            }
+        }
+        
+        // Draw thick walls (3-4 pixels wide) to form corridors
+        int wallThickness = 3;
+        
+        // Vertical walls (left and right sides)
+        int leftWall = 6;
+        int rightWall = cols - 7;
+        for (int r = 0; r < rows; r++) {
+            for (int w = 0; w < wallThickness; w++) {
+                if (leftWall + w < cols) grid[r][leftWall + w] = 2;
+                if (rightWall - w >= 0) grid[r][rightWall - w] = 2;
+            }
+        }
+        
+        // Horizontal walls (top and bottom)
+        int topWall = 5;
+        int bottomWall = rows - 6;
+        for (int c = 0; c < cols; c++) {
+            for (int w = 0; w < wallThickness; w++) {
+                if (topWall + w < rows) grid[topWall + w][c] = 2;
+                if (bottomWall - w >= 0) grid[bottomWall - w][c] = 2;
+            }
+        }
+        
+        // Create center vertical wall
+        int centerWall = cols / 2;
+        for (int r = 0; r < rows; r++) {
+            // Skip the middle third to create passage
+            if (r < rows/3 || r > 2*rows/3) {
+                for (int w = 0; w < wallThickness; w++) {
+                    if (centerWall + w < cols) grid[r][centerWall + w] = 2;
                 }
+            }
+        }
+        
+        // Create some internal divisions with gaps
+        int divideCol1 = cols / 4;
+        int divideCol2 = 3 * cols / 4;
+        
+        // Left division (with gap in middle)
+        for (int r = 0; r < rows; r++) {
+            if (r < rows/3 || r > 2*rows/3) {
+                for (int w = 0; w < wallThickness; w++) {
+                    if (divideCol1 + w < cols) grid[r][divideCol1 + w] = 2;
+                }
+            }
+        }
+        
+        // Right division (with gap in middle)
+        for (int r = 0; r < rows; r++) {
+            if (r < rows/3 || r > 2*rows/3) {
+                for (int w = 0; w < wallThickness; w++) {
+                    if (divideCol2 + w < cols) grid[r][divideCol2 + w] = 2;
+                }
+            }
+        }
+        
+        // Clear some areas to create rooms
+        for (int r = 2; r < rows - 2; r++) {
+            for (int c = 2; c < cols - 2; c++) {
+                if (grid[r][c] == 0) grid[r][c] = 1;
             }
         }
         // Place Pacman in a guaranteed open area
