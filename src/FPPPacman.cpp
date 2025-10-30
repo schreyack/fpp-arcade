@@ -45,89 +45,12 @@ public:
         if (cols < 8) cols = 8;
         if (rows < 8) rows = 8;
 
-        // Original Pac-Man style maze
+        // Initialize grid
         grid.resize(rows);
         for (int r = 0; r < rows; r++) {
-            grid[r].resize(cols, 2); // 2 = wall
+            grid[r].resize(cols, 1); // 1 = pellet
         }
         
-        // Helper to draw a wall box (rectangle outline)
-        auto drawBox = [this](int top, int left, int bottom, int right) {
-            // Top and bottom
-            for (int c = left; c <= right && c < cols; c++) {
-                for (int w = 0; w < 3; w++) {
-                    if (top + w < rows) grid[top + w][c] = 2;
-                    if (bottom - w >= 0) grid[bottom - w][c] = 2;
-                }
-            }
-            // Left and right
-            for (int r = top; r <= bottom && r < rows; r++) {
-                for (int w = 0; w < 3; w++) {
-                    if (left + w < cols) grid[r][left + w] = 2;
-                    if (right - w >= 0) grid[r][right - w] = 2;
-                }
-            }
-        };
-        
-        // Outer boundary
-        drawBox(0, 0, rows - 1, cols - 1);
-        
-        // Top-left box (classic Pacman maze element)
-        drawBox(3, 2, 8, cols / 4 - 1);
-        
-        // Top-right box
-        drawBox(3, 3 * cols / 4, 8, cols - 3);
-        
-        // Bottom-left box
-        drawBox(rows - 9, 2, rows - 4, cols / 4 - 1);
-        
-        // Bottom-right box
-        drawBox(rows - 9, 3 * cols / 4, rows - 4, cols - 3);
-        
-        // Center box (ghost house area)
-        int gLeft = cols / 2 - 3;
-        int gRight = cols / 2 + 4;
-        int gTop = rows / 2 - 1;
-        int gBottom = rows / 2 + 4;
-        drawBox(gTop, gLeft, gBottom, gRight);
-        
-        // Horizontal corridors connecting left and right
-        for (int c = 1; c < cols - 1; c++) {
-            // Top corridor
-            for (int w = 0; w < 3; w++) {
-                if (2 + w < rows) grid[2 + w][c] = 0;
-            }
-            // Middle corridors
-            int mid = rows / 2;
-            for (int w = 0; w < 3; w++) {
-                if (mid - 1 + w < rows) grid[mid - 1 + w][c] = 0;
-            }
-            // Bottom corridor
-            for (int w = 0; w < 3; w++) {
-                if (rows - 3 - w >= 0) grid[rows - 3 - w][c] = 0;
-            }
-        }
-        
-        // Vertical corridors on sides
-        for (int r = 3; r < rows - 3; r++) {
-            // Left side
-            for (int w = 0; w < 3; w++) {
-                if (2 + w < cols) grid[r][2 + w] = 0;
-            }
-            // Right side
-            for (int w = 0; w < 3; w++) {
-                if (cols - 3 - w >= 0) grid[r][cols - 3 - w] = 0;
-            }
-        }
-        
-        // Fill all open areas with pellets
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                if (grid[r][c] == 0) {
-                    grid[r][c] = 1; // pellet
-                }
-            }
-        }
         // Place Pacman in a guaranteed open area (center)
         pacmanX = cols/2;
         pacmanY = rows/2;
