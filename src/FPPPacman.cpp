@@ -167,22 +167,14 @@ public:
 
     void CopyToModel() {
         model->clearOverlayBuffer();
-        // draw grid
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                int gx = c; int gy = r;
-                if (grid[r][c] == 2) {
-                    // wall - bright blue
-                    outputPixel(gx, gy, 0, 0, 255);
-                } else if (grid[r][c] == 1) {
-                    // pellet - draw as bright dot
-                    // Only draw pellet if Pacman is not overlapping (within pacRadius)
-                    if (!(abs(pacmanX-c) <= pacRadius && abs(pacmanY-r) <= pacRadius)) {
-                        outputPixel(gx, gy, 255, 200, 0);
-                    }
-                }
+        
+        // Draw pellets in a grid pattern
+        for (int r = 0; r < rows; r += 2) {
+            for (int c = 0; c < cols; c += 2) {
+                outputPixel(c, r, 255, 200, 0);
             }
         }
+        
         // draw Pacman as scaled circle with mouth
         drawPacman(pacmanX, pacmanY, pacDir);
         // draw ghosts
