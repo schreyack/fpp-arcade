@@ -126,9 +126,12 @@ public:
         int numGhosts = 3 + (rand() % 8); // 3-10 ghosts
         int px = pacmanX;
         int py = pacmanY;
-        std::vector<std::pair<int, int>> ghostPositions = {
-            {1, 1}, {cols-2, 1}, {1, rows-2}, {cols-2, rows-2}, {cols/2, 1}, {cols/2, rows-2}, {1, cols/2}, {rows-2, cols/2}, {cols/2, rows/2}, {cols/2-1, rows/2}
-        };
+        std::vector<std::pair<int, int>> ghostPositions;
+        for (int r = minWallGap; r < rows-minWallGap; r += minWallGap) {
+            for (int c = minWallGap; c < cols-minWallGap; c += minWallGap) {
+                if (grid[r][c] != 2) ghostPositions.push_back({c, r});
+            }
+        }
         // Filter out positions too close to Pacman (distance <= 1)
         std::vector<std::pair<int, int>> validGhostPositions;
         for (auto &pos : ghostPositions) {
