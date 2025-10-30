@@ -45,84 +45,82 @@ public:
         if (cols < 8) cols = 8;
         if (rows < 8) rows = 8;
 
-        // Start with all walls
+        // Original Pac-Man style maze
         grid.resize(rows);
         for (int r = 0; r < rows; r++) {
             grid[r].resize(cols, 2); // 2 = wall
         }
         
-        // Helper lambda to carve a horizontal corridor
-        auto hCorridor = [this](int row, int colStart, int colEnd) {
-            for (int c = colStart; c <= colEnd && c < cols; c++) {
+        // Helper to draw a wall box (rectangle outline)
+        auto drawBox = [this](int top, int left, int bottom, int right) {
+            // Top and bottom
+            for (int c = left; c <= right && c < cols; c++) {
                 for (int w = 0; w < 3; w++) {
-                    int r = row + w;
-                    if (r < rows) grid[r][c] = 0;
+                    if (top + w < rows) grid[top + w][c] = 2;
+                    if (bottom - w >= 0) grid[bottom - w][c] = 2;
+                }
+            }
+            // Left and right
+            for (int r = top; r <= bottom && r < rows; r++) {
+                for (int w = 0; w < 3; w++) {
+                    if (left + w < cols) grid[r][left + w] = 2;
+                    if (right - w >= 0) grid[r][right - w] = 2;
                 }
             }
         };
         
-        // Helper lambda to carve a vertical corridor
-        auto vCorridor = [this](int col, int rowStart, int rowEnd) {
-            for (int r = rowStart; r <= rowEnd && r < rows; r++) {
-                for (int w = 0; w < 3; w++) {
-                    int c = col + w;
-                    if (c < cols) grid[r][c] = 0;
-                }
+        // Outer boundary
+        drawBox(0, 0, rows - 1, cols - 1);
+        
+        // Top-left box (classic Pacman maze element)
+        drawBox(3, 2, 8, cols / 4 - 1);
+        
+        // Top-right box
+        drawBox(3, 3 * cols / 4, 8, cols - 3);
+        
+        // Bottom-left box
+        drawBox(rows - 9, 2, rows - 4, cols / 4 - 1);
+        
+        // Bottom-right box
+        drawBox(rows - 9, 3 * cols / 4, rows - 4, cols - 3);
+        
+        // Center box (ghost house area)
+        int gLeft = cols / 2 - 3;
+        int gRight = cols / 2 + 4;
+        int gTop = rows / 2 - 1;
+        int gBottom = rows / 2 + 4;
+        drawBox(gTop, gLeft, gBottom, gRight);
+        
+        // Horizontal corridors connecting left and right
+        for (int c = 1; c < cols - 1; c++) {
+            // Top corridor
+            for (int w = 0; w < 3; w++) {
+                if (2 + w < rows) grid[2 + w][c] = 0;
             }
-        };
+            // Middle corridors
+            int mid = rows / 2;
+            for (int w = 0; w < 3; w++) {
+                if (mid - 1 + w < rows) grid[mid - 1 + w][c] = 0;
+            }
+            // Bottom corridor
+            for (int w = 0; w < 3; w++) {
+                if (rows - 3 - w >= 0) grid[rows - 3 - w][c] = 0;
+            }
+        }
         
-        // Create main boundary with borders
-        hCorridor(1, 1, cols - 2);          // top border
-        hCorridor(rows - 4, 1, cols - 2);   // bottom border
-        vCorridor(1, 1, rows - 4);          // left border
-        vCorridor(cols - 4, 1, rows - 4);   // right border
+        // Vertical corridors on sides
+        for (int r = 3; r < rows - 3; r++) {
+            // Left side
+            for (int w = 0; w < 3; w++) {
+                if (2 + w < cols) grid[r][2 + w] = 0;
+            }
+            // Right side
+            for (int w = 0; w < 3; w++) {
+                if (cols - 3 - w >= 0) grid[r][cols - 3 - w] = 0;
+            }
+        }
         
-        // Main horizontal thoroughfare through center
-        int centerRow = rows / 2 - 1;
-        hCorridor(centerRow, 1, cols - 2);
-        
-        // Left-side vertical spine
-        int leftSpine = cols / 4;
-        vCorridor(leftSpine, 1, rows - 4);
-        
-        // Right-side vertical spine
-        int rightSpine = 3 * cols / 4;
-        vCorridor(rightSpine, 1, rows - 4);
-        
-        // Connect left spine to top (quarter points)
-        int q1 = cols / 8;
-        vCorridor(q1, 1, centerRow + 1);
-        hCorridor(6, q1, leftSpine);
-        
-        // Connect right spine to top
-        int q3 = 7 * cols / 8;
-        vCorridor(q3, 1, centerRow + 1);
-        hCorridor(6, rightSpine, q3);
-        
-        // Connect left spine to bottom
-        hCorridor(rows - 8, q1, leftSpine);
-        
-        // Connect right spine to bottom
-        hCorridor(rows - 8, rightSpine, q3);
-        
-        // Upper left nook
-        hCorridor(3, 2, leftSpine - 2);
-        
-        // Upper right nook
-        hCorridor(3, rightSpine + 3, cols - 3);
-        
-        // Lower left nook
-        hCorridor(rows - 6, 2, leftSpine - 2);
-        
-        // Lower right nook
-        hCorridor(rows - 6, rightSpine + 3, cols - 3);
-        
-        // Small cross-corridors for connectivity
-        vCorridor(cols / 2 - 1, centerRow - 3, centerRow + 6);
-        hCorridor(centerRow - 3, leftSpine, rightSpine);
-        hCorridor(centerRow + 4, leftSpine, rightSpine);
-        
-        // Fill open corridor cells with pellets
+        // Fill all open areas with pellets
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 if (grid[r][c] == 0) {
