@@ -233,12 +233,12 @@ public:
                 outputPixel(x+dx, y+dy, r, g, b);
             }
         }
-        // Eyes (white background)
+        // Eyes: draw white squares first
         outputPixel(x-1, y-2, 255, 255, 255);
         outputPixel(x+0, y-2, 255, 255, 255);
-        // Pupils (black dots) - smaller, offset inward
-        outputPixel(x-1, y-2, 0, 0, 0);
-        outputPixel(x+0, y-2, 0, 0, 0);
+        // Pupils: small black center in each eye (offset inward slightly)
+        outputPixel(x-1, y-1, 0, 0, 0);
+        outputPixel(x+0, y-1, 0, 0, 0);
     }
 
     void CopyToModel() {
@@ -267,18 +267,6 @@ public:
         // player-controlled ghost (draw in cyan)
         drawGhost(playerGhost.x, playerGhost.y, 0, 255, 255);
         model->flushOverlayBuffer();
-    }
-
-    bool canMoveTo(int x, int y, int radius) {
-        // Check bounding box for wall collisions
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -radius; dy <= radius; dy++) {
-                int nx = x+dx, ny = y+dy;
-                if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return false;
-                if ((dx*dx + dy*dy <= radius*radius) && grid[ny][nx] == 2) return false;
-            }
-        }
-        return true;
     }
 
     void movePacman() {
