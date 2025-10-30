@@ -33,7 +33,6 @@ public:
     int pacDir = -1;  // -1 = no movement until input
     int playerGhostDir = 0;
     int playerGhostSpeedBoostTimer = 0; // Timer for speed boost effect
-    int playerGhostLastPressedDir = -1; // Track last direction pressed to prevent continuous boosts
     std::vector<std::vector<int>> grid; // 0 empty, 1 pellet, 2 wall
     std::set<std::pair<int, int>> eatenPellets; // Track which pellets have been eaten
     std::vector<Ghost> ghosts;
@@ -165,13 +164,13 @@ public:
         
         for (int i = 0; i < numGhosts; i++) {
             Ghost g;
-            // Random position, but at least 5 units away from Pacman and not on walls
+            // Random position, but at least 8 units away from Pacman (Euclidean distance) and not on walls
             int attempts = 0;
             do {
                 g.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
                 g.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
                 attempts++;
-            } while (((abs(g.x - pacmanX) + abs(g.y - pacmanY) < 5) || grid[g.y][g.x] == 2) && attempts < 20);
+            } while (((g.x - pacmanX)*(g.x - pacmanX) + (g.y - pacmanY)*(g.y - pacmanY) < 64 || grid[g.y][g.x] == 2) && attempts < 20);
             
             g.dir = rand() % 4;
             ghosts.push_back(g);
@@ -183,10 +182,9 @@ public:
             playerGhost.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
             playerGhost.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
             attempts++;
-        } while (((abs(playerGhost.x - pacmanX) + abs(playerGhost.y - pacmanY) < 5) || grid[playerGhost.y][playerGhost.x] == 2) && attempts < 20);
+        } while (((playerGhost.x - pacmanX)*(playerGhost.x - pacmanX) + (playerGhost.y - pacmanY)*(playerGhost.y - pacmanY) < 64 || grid[playerGhost.y][playerGhost.x] == 2) && attempts < 20);
         playerGhost.dir = 0;
         playerGhostSpeedBoostTimer = 0;
-        playerGhostLastPressedDir = -1;
 
     }
 
@@ -536,12 +534,11 @@ public:
             }
             
             if (newDir != -1) {
-                // Check if this direction matches current movement direction and wasn't the last press
-                if (newDir == playerGhostDir && newDir != playerGhostLastPressedDir && playerGhostSpeedBoostTimer == 0) {
+                // Check if this direction matches current movement direction and no boost is active
+                if (newDir == playerGhostDir && playerGhostSpeedBoostTimer == 0) {
                     playerGhostSpeedBoostTimer = 5; // Speed boost for 5 update cycles
                 }
                 playerGhostDir = newDir;
-                playerGhostLastPressedDir = newDir;
             }
         } else {
             // Player 1 controls Pacman
