@@ -117,7 +117,7 @@ public:
             }
         }
 
-        // Remove border walls that block large sprites
+        // Remove all border walls to guarantee open edge passages
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 if (r < pacRadius || r >= rows-pacRadius || c < pacRadius || c >= cols-pacRadius) {
@@ -125,33 +125,26 @@ public:
                 }
             }
         }
-        // Ensure all vertical corridors are at least minWallGap wide
-        std::vector<int> vcols;
-        for (int i = minWallGap; i < cols-minWallGap; i += minWallGap) {
-            vcols.push_back(i);
-        }
+        // When placing vertical and horizontal walls, never place within pacRadius or ghostSize/2 of the edges
         for (int vc : vcols) {
+            if (vc < pacRadius || vc > cols-pacRadius-1) continue;
             for (int r = pacRadius; r < rows-pacRadius; r++) {
                 grid[r][vc] = 2;
             }
         }
-        // Ensure all horizontal corridors are at least minWallGap wide
-        std::vector<int> hrows;
-        for (int i = minWallGap; i < rows-minWallGap; i += minWallGap) {
-            hrows.push_back(i);
-        }
         for (int hr : hrows) {
+            if (hr < pacRadius || hr > rows-pacRadius-1) continue;
             for (int c = pacRadius; c < cols-pacRadius; c++) {
                 grid[hr][c] = 2;
             }
         }
         // Place Pacman in a guaranteed open area
-        pacmanX = cols/2;
-        pacmanY = rows/2;
+        pacmanX = pacRadius+1;
+        pacmanY = pacRadius+1;
         while (!canMoveTo(pacmanX, pacmanY, pacRadius)) {
             pacmanX++;
-            if (pacmanX >= cols-pacRadius) { pacmanX = pacRadius; pacmanY++; }
-            if (pacmanY >= rows-pacRadius) pacmanY = pacRadius;
+            if (pacmanX >= cols-pacRadius) { pacmanX = pacRadius+1; pacmanY++; }
+            if (pacmanY >= rows-pacRadius) pacmanY = pacRadius+1;
         }
         // Place ghosts in guaranteed open areas
         ghosts.clear();
@@ -163,8 +156,8 @@ public:
             }
         }
         // Place player-controlled ghost in a guaranteed open area
-        playerGhost.x = cols-pacRadius-1;
-        playerGhost.y = rows-pacRadius-1;
+        playerGhost.x = cols-pacRadius-2;
+        playerGhost.y = rows-pacRadius-2;
         playerGhost.dir = 0;
         // Remove this position from ghostPositions
         ghostPositions.erase(
