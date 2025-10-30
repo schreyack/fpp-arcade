@@ -196,6 +196,13 @@ public:
                 }
             }
         }
+        // Fill the front edge of Pacman in the direction of movement
+        for (int i = -r/2; i <= r/2; i++) {
+            if (dir == 0) outputPixel(x-r, y+i, 255,255,0);
+            if (dir == 1) outputPixel(x+i, y-r, 255,255,0);
+            if (dir == 2) outputPixel(x+r, y+i, 255,255,0);
+            if (dir == 3) outputPixel(x+i, y+r, 255,255,0);
+        }
         // Draw eye
         int eyeX = x, eyeY = y;
         if (dir == 0) { eyeX = x; eyeY = y-1; }
