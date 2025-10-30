@@ -570,7 +570,7 @@ public:
             if (checkCollision(pacmanX, pacmanY, pacRadius, gh.x, gh.y, ghostSize/2)) {
                 GameOn = false;
                 outputString("GAME", cols/2 - 4, rows/2-3);
-                outputString("OVER", cols/2 - 4, rows/2+2);
+                outputString("OVER", cols/2 - 4, rows/2+3);
                 model->flushOverlayBuffer();
                 return 5000;
             }
@@ -579,7 +579,7 @@ public:
         if (checkCollision(pacmanX, pacmanY, pacRadius, playerGhost.x, playerGhost.y, ghostSize/2)) {
             GameOn = false;
             outputString("GAME", cols/2 - 4, rows/2-3);
-            outputString("OVER", cols/2 - 4, rows/2+2);
+            outputString("OVER", cols/2 - 4, rows/2+3);
             model->flushOverlayBuffer();
             return 5000;
         }
@@ -596,7 +596,7 @@ public:
         if (pelletsLeft == 0 && specialPellets.empty()) {
             GameOn = false;
             outputString("YOU", cols/2 - 3, rows/2-3);
-            outputString("WIN", cols/2 - 3, rows/2+2);
+            outputString("WIN", cols/2 - 3, rows/2+3);
             model->flushOverlayBuffer();
             return 5000;
         }
