@@ -68,54 +68,54 @@ public:
                 }
             }
         }
-        // Bottom wall
-        for (int r = endY - wallThickness + 1; r <= endY; r++) {
-            for (int c = startX; c <= endX; c++) {
-                if (r >= 0 && c < cols) {
-                    if (doorWall == 1) { // Bottom wall has doorway
-                        int doorStart = startX + width/2 - 3; // 7 units wide door
-                        int doorEnd = startX + width/2 + 3;
-                        if (c < doorStart || c > doorEnd) {
-                            grid[r][c] = 2;
-                        }
-                    } else {
-                        grid[r][c] = 2; // Solid wall
-                    }
-                }
-            }
-        }
-        // Left wall
-        for (int c = startX; c < startX + wallThickness; c++) {
-            for (int r = startY; r <= endY; r++) {
-                if (c < cols && r < rows) {
-                    if (doorWall == 2) { // Left wall has doorway
-                        int doorStart = startY + height/2 - 3; // 7 units wide door
-                        int doorEnd = startY + height/2 + 3;
-                        if (r < doorStart || r > doorEnd) {
-                            grid[r][c] = 2;
-                        }
-                    } else {
-                        grid[r][c] = 2; // Solid wall
-                    }
-                }
-            }
-        }
-        // Right wall
-        for (int c = endX - wallThickness + 1; c <= endX; c++) {
-            for (int r = startY; r <= endY; r++) {
-                if (c >= 0 && r < rows) {
-                    if (doorWall == 3) { // Right wall has doorway
-                        int doorStart = startY + height/2 - 3; // 7 units wide door
-                        int doorEnd = startY + height/2 + 3;
-                        if (r < doorStart || r > doorEnd) {
-                            grid[r][c] = 2;
-                        }
-                    } else {
-                        grid[r][c] = 2; // Solid wall
-                    }
-                }
-            }
-        }
+        // // Bottom wall
+        // for (int r = endY - wallThickness + 1; r <= endY; r++) {
+        //     for (int c = startX; c <= endX; c++) {
+        //         if (r >= 0 && c < cols) {
+        //             if (doorWall == 1) { // Bottom wall has doorway
+        //                 int doorStart = startX + width/2 - 3; // 7 units wide door
+        //                 int doorEnd = startX + width/2 + 3;
+        //                 if (c < doorStart || c > doorEnd) {
+        //                     grid[r][c] = 2;
+        //                 }
+        //             } else {
+        //                 grid[r][c] = 2; // Solid wall
+        //             }
+        //         }
+        //     }
+        // }
+        // // Left wall
+        // for (int c = startX; c < startX + wallThickness; c++) {
+        //     for (int r = startY; r <= endY; r++) {
+        //         if (c < cols && r < rows) {
+        //             if (doorWall == 2) { // Left wall has doorway
+        //                 int doorStart = startY + height/2 - 3; // 7 units wide door
+        //                 int doorEnd = startY + height/2 + 3;
+        //                 if (r < doorStart || r > doorEnd) {
+        //                     grid[r][c] = 2;
+        //                 }
+        //             } else {
+        //                 grid[r][c] = 2; // Solid wall
+        //             }
+        //         }
+        //     }
+        // }
+        // // Right wall
+        // for (int c = endX - wallThickness + 1; c <= endX; c++) {
+        //     for (int r = startY; r <= endY; r++) {
+        //         if (c >= 0 && r < rows) {
+        //             if (doorWall == 3) { // Right wall has doorway
+        //                 int doorStart = startY + height/2 - 3; // 7 units wide door
+        //                 int doorEnd = startY + height/2 + 3;
+        //                 if (r < doorStart || r > doorEnd) {
+        //                     grid[r][c] = 2;
+        //                 }
+        //             } else {
+        //                 grid[r][c] = 2; // Solid wall
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
@@ -150,7 +150,7 @@ public:
         // Top-left room
         int tlStartX = 8;
         int tlStartY = 8;
-        drawRoom(tlStartX, tlStartY, roomWidth, roomHeight, rand() % 4);
+        drawRoom(tlStartX, tlStartY, roomWidth, roomHeight, 0);
         
         // // Top-right room
         // int trStartX = cols - 8 - roomWidth;
