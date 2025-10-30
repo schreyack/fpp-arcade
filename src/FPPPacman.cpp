@@ -150,7 +150,7 @@ public:
         drawRoom(roomStartX, roomStartY, roomWidth, roomHeight, rand() % 4);
         
         // Draw four corner rooms with same size
-        int margin = 8; // Distance from edge to allow Pacman to fit through
+        int margin = 16; // Distance from edge to allow Pacman to fit through
         
         // Ensure corner rooms fit within bounds
         int cornerRoomWidth = roomWidth;
