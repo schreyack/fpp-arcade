@@ -62,39 +62,23 @@ public:
             }
         }
         
-        // Place ghosts in guaranteed open areas away from Pacman
+        // Place ghosts in random locations
         ghosts.clear();
         int numGhosts = 3 + (rand() % 4);
-        std::vector<std::pair<int, int>> ghostPositions;
         
-        for (int r = pacRadius + 1; r < rows - pacRadius; r++) {
-            for (int c = pacRadius + 1; c < cols - pacRadius; c++) {
-                if (grid[r][c] != 2) {
-                    int distToPac = abs(c - pacmanX) + abs(r - pacmanY);
-                    if (distToPac > 5) {
-                        ghostPositions.push_back({c, r});
-                    }
-                }
-            }
-        }
-        
-        // Place player-controlled ghost
-        playerGhost.x = pacRadius + 1;
-        playerGhost.y = pacRadius + 1;
-        if (!canMoveTo(playerGhost.x, playerGhost.y, ghostSize/2)) {
-            playerGhost.x = cols - pacRadius - 2;
-            playerGhost.y = rows - pacRadius - 2;
-        }
-        playerGhost.dir = 0;
-        
-        // Spawn AI ghosts
-        for (int i = 0; i < numGhosts && i < (int)ghostPositions.size(); ++i) {
+        for (int i = 0; i < numGhosts; i++) {
             Ghost g;
-            g.x = ghostPositions[i].first;
-            g.y = ghostPositions[i].second;
-            g.dir = 0;
+            // Random position
+            g.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
+            g.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
+            g.dir = rand() % 4;
             ghosts.push_back(g);
         }
+        
+        // Place player-controlled ghost at random location
+        playerGhost.x = pacRadius + 1 + (rand() % (cols - 2 * pacRadius - 2));
+        playerGhost.y = pacRadius + 1 + (rand() % (rows - 2 * pacRadius - 2));
+        playerGhost.dir = 0;
 
         timer = 150;
     }
