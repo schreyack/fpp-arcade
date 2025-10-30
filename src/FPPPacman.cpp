@@ -43,6 +43,78 @@ public:
     bool WaitingUntilOutput = false;
     long long timer = 150;
 
+    void drawRoom(int startX, int startY, int width, int height, int doorWall = -1) {
+        int wallThickness = 2;
+        int endX = startX + width - 1;
+        int endY = startY + height - 1;
+        
+        // Create walls (2 units thick)
+        // Top wall
+        for (int r = startY; r < startY + wallThickness; r++) {
+            for (int c = startX; c <= endX; c++) {
+                if (r < rows && c < cols) {
+                    if (doorWall == 0) { // Top wall has doorway
+                        int doorStart = startX + width/2 - 2; // 4 units wide door
+                        int doorEnd = startX + width/2 + 2;
+                        if (c < doorStart || c > doorEnd) {
+                            grid[r][c] = 2;
+                        }
+                    } else {
+                        grid[r][c] = 2; // Solid wall
+                    }
+                }
+            }
+        }
+        // Bottom wall
+        for (int r = endY - wallThickness + 1; r <= endY; r++) {
+            for (int c = startX; c <= endX; c++) {
+                if (r >= 0 && c < cols) {
+                    if (doorWall == 1) { // Bottom wall has doorway
+                        int doorStart = startX + width/2 - 2; // 4 units wide door
+                        int doorEnd = startX + width/2 + 2;
+                        if (c < doorStart || c > doorEnd) {
+                            grid[r][c] = 2;
+                        }
+                    } else {
+                        grid[r][c] = 2; // Solid wall
+                    }
+                }
+            }
+        }
+        // Left wall
+        for (int c = startX; c < startX + wallThickness; c++) {
+            for (int r = startY; r <= endY; r++) {
+                if (c < cols && r < rows) {
+                    if (doorWall == 2) { // Left wall has doorway
+                        int doorStart = startY + height/2 - 2; // 4 units wide door
+                        int doorEnd = startY + height/2 + 2;
+                        if (r < doorStart || r > doorEnd) {
+                            grid[r][c] = 2;
+                        }
+                    } else {
+                        grid[r][c] = 2; // Solid wall
+                    }
+                }
+            }
+        }
+        // Right wall
+        for (int c = endX - wallThickness + 1; c <= endX; c++) {
+            for (int r = startY; r <= endY; r++) {
+                if (c >= 0 && r < rows) {
+                    if (doorWall == 3) { // Right wall has doorway
+                        int doorStart = startY + height/2 - 2; // 4 units wide door
+                        int doorEnd = startY + height/2 + 2;
+                        if (r < doorStart || r > doorEnd) {
+                            grid[r][c] = 2;
+                        }
+                    } else {
+                        grid[r][c] = 2; // Solid wall
+                    }
+                }
+            }
+        }
+    }
+
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
         m->getSize(cols, rows);
         cols /= scale; rows /= scale;
@@ -55,96 +127,29 @@ public:
             grid[r].resize(cols, 0); // 0 = empty
         }
         
-        // Create central room sized to contain approximately 15x9 pellets
-        // Since pellets are every 2 units, 15 pellets wide = 30 units, 9 pellets high = 18 units
-        int targetPelletsWide = 15;
-        int targetPelletsHigh = 9;
-        int pelletSpacing = 2;
+        // Create four corner rooms
+        // Room size: approximately 7x5 pellets = 14x10 units
+        int roomWidth = 14;
+        int roomHeight = 10;
+        int margin = 4; // Distance from edge to allow Pacman to fit through
         
-        int targetWidth = targetPelletsWide * pelletSpacing;
-        int targetHeight = targetPelletsHigh * pelletSpacing;
+        // Ensure rooms fit within bounds
+        if (roomWidth + 2*margin > cols) roomWidth = cols - 2*margin;
+        if (roomHeight + 2*margin > rows) roomHeight = rows - 2*margin;
+        if (roomWidth < 8) roomWidth = 8;
+        if (roomHeight < 6) roomHeight = 6;
         
-        // Adjust to fit within grid bounds with wall thickness
-        int wallThickness = 2;
-        int maxInteriorWidth = cols - 2 * wallThickness;
-        int maxInteriorHeight = rows - 2 * wallThickness;
+        // Top-left room
+        drawRoom(margin, margin, roomWidth, roomHeight, rand() % 4);
         
-        int roomWidth = (targetWidth < maxInteriorWidth) ? targetWidth : maxInteriorWidth;
-        int roomHeight = (targetHeight < maxInteriorHeight) ? targetHeight : maxInteriorHeight;
+        // Top-right room
+        drawRoom(cols - roomWidth - margin, margin, roomWidth, roomHeight, rand() % 4);
         
-        int roomStartX = (cols - roomWidth) / 2;
-        int roomStartY = (rows - roomHeight) / 2;
-        int roomEndX = roomStartX + roomWidth - 1;
-        int roomEndY = roomStartY + roomHeight - 1;
+        // Bottom-left room
+        drawRoom(margin, rows - roomHeight - margin, roomWidth, roomHeight, rand() % 4);
         
-        // Randomly choose which wall gets the doorway (0=top, 1=bottom, 2=left, 3=right)
-        int doorWall = rand() % 4;
-        
-        // Create walls (2 units thick)
-        // Top wall
-        for (int r = roomStartY; r < roomStartY + wallThickness; r++) {
-            for (int c = roomStartX; c <= roomEndX; c++) {
-                if (r < rows && c < cols) {
-                    if (doorWall == 0) { // Top wall has doorway
-                        int doorStart = roomStartX + roomWidth/2 - 2; // 4 units wide door
-                        int doorEnd = roomStartX + roomWidth/2 + 2;
-                        if (c < doorStart || c > doorEnd) {
-                            grid[r][c] = 2;
-                        }
-                    } else {
-                        grid[r][c] = 2; // Solid wall
-                    }
-                }
-            }
-        }
-        // Bottom wall
-        for (int r = roomEndY - wallThickness + 1; r <= roomEndY; r++) {
-            for (int c = roomStartX; c <= roomEndX; c++) {
-                if (r >= 0 && c < cols) {
-                    if (doorWall == 1) { // Bottom wall has doorway
-                        int doorStart = roomStartX + roomWidth/2 - 2; // 4 units wide door
-                        int doorEnd = roomStartX + roomWidth/2 + 2;
-                        if (c < doorStart || c > doorEnd) {
-                            grid[r][c] = 2;
-                        }
-                    } else {
-                        grid[r][c] = 2; // Solid wall
-                    }
-                }
-            }
-        }
-        // Left wall
-        for (int c = roomStartX; c < roomStartX + wallThickness; c++) {
-            for (int r = roomStartY; r <= roomEndY; r++) {
-                if (c < cols && r < rows) {
-                    if (doorWall == 2) { // Left wall has doorway
-                        int doorStart = roomStartY + roomHeight/2 - 2; // 4 units wide door
-                        int doorEnd = roomStartY + roomHeight/2 + 2;
-                        if (r < doorStart || r > doorEnd) {
-                            grid[r][c] = 2;
-                        }
-                    } else {
-                        grid[r][c] = 2; // Solid wall
-                    }
-                }
-            }
-        }
-        // Right wall
-        for (int c = roomEndX - wallThickness + 1; c <= roomEndX; c++) {
-            for (int r = roomStartY; r <= roomEndY; r++) {
-                if (c >= 0 && r < rows) {
-                    if (doorWall == 3) { // Right wall has doorway
-                        int doorStart = roomStartY + roomHeight/2 - 2; // 4 units wide door
-                        int doorEnd = roomStartY + roomHeight/2 + 2;
-                        if (r < doorStart || r > doorEnd) {
-                            grid[r][c] = 2;
-                        }
-                    } else {
-                        grid[r][c] = 2; // Solid wall
-                    }
-                }
-            }
-        }
+        // Bottom-right room
+        drawRoom(cols - roomWidth - margin, rows - roomHeight - margin, roomWidth, roomHeight, rand() % 4);
         
         // Place pellets at even coordinates (multiples of 2) except on walls
         for (int r = 0; r < rows; r += 2) {
@@ -155,9 +160,9 @@ public:
             }
         }
         
-        // Place Pacman in the center of the central room
-        pacmanX = cols / 2;
-        pacmanY = rows / 2;
+        // Place Pacman in the center of the top-left room
+        pacmanX = margin + roomWidth / 2;
+        pacmanY = margin + roomHeight / 2;
         
         // Place ghosts in random locations (avoiding Pacman and walls)
         ghosts.clear();
