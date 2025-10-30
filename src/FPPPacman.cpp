@@ -39,7 +39,7 @@ public:
     bool GameOn = true;
     bool Paused = false;
     bool WaitingUntilOutput = false;
-    long long timer = 200;
+    long long timer = 150;
 
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
         m->getSize(cols, rows);
@@ -91,7 +91,6 @@ public:
         } while ((abs(playerGhost.x - pacmanX) + abs(playerGhost.y - pacmanY) < 5) && attempts < 20);
         playerGhost.dir = 0;
 
-        timer = 150;
     }
 
     const std::string &name() const override {
@@ -142,14 +141,18 @@ public:
         if (dir == 2) { eyeX = x; eyeY = y-1; }
         if (dir == 3) { eyeX = x-1; eyeY = y; }
         outputPixel(eyeX, eyeY, 0,0,0);
-        // Draw pellet inside mouth if Pacman overlaps a pellet
-        int pelletX = x, pelletY = y;
-        if (dir == 0) pelletX = x-2;
-        if (dir == 1) pelletY = y-2;
-        if (dir == 2) pelletX = x+2;
-        if (dir == 3) pelletY = y+2;
-        if (pelletX >= 0 && pelletY >= 0 && pelletX < cols && pelletY < rows && grid[pelletY][pelletX] == 1) {
-            outputPixel(pelletX, pelletY, 48, 48, 0);
+        // Draw pellet inside mouth if Pacman is on a pellet position
+        int pelletX = (x + 1) / 2 * 2; // Round to nearest pellet position
+        int pelletY = (y + 1) / 2 * 2;
+        if (pelletX >= 0 && pelletY >= 0 && pelletX < cols && pelletY < rows && 
+            eatenPellets.find({pelletX, pelletY}) == eatenPellets.end()) {
+            // Show pellet in mouth at a slight offset
+            int mouthX = x, mouthY = y;
+            if (dir == 0) mouthX = x - 1;
+            else if (dir == 2) mouthX = x + 1;
+            else if (dir == 1) mouthY = y - 1;
+            else if (dir == 3) mouthY = y + 1;
+            outputPixel(mouthX, mouthY, 48, 48, 0);
         }
     }
     void drawGhost(int x, int y, int r, int g, int b) {
@@ -204,25 +207,39 @@ public:
             pacmanX = nx; pacmanY = ny;
         }
         
-        // Eat pellets at all grid positions within range
-        for (int r = pacmanY - 3; r <= pacmanY + 3; r++) {
-            for (int c = pacmanX - 3; c <= pacmanX + 3; c++) {
-                if (r % 2 == 0 && c % 2 == 0 && r >= 0 && r < rows && c >= 0 && c < cols) {
-                    eatenPellets.insert({c, r});
-                }
-            }
+        // Eat pellet at Pacman's current position (round to nearest pellet location)
+        int pelletX = (pacmanX + 1) / 2 * 2; // Round to nearest even coordinate
+        int pelletY = (pacmanY + 1) / 2 * 2;
+        if (pelletX >= 0 && pelletX < cols && pelletY >= 0 && pelletY < rows) {
+            eatenPellets.insert({pelletX, pelletY});
         }
     }
 
+    bool isPositionOccupied(int x, int y, int excludeIndex = -1) {
+        // Check if position is occupied by any ghost (except optionally excluded one)
+        for (size_t i = 0; i < ghosts.size(); i++) {
+            if ((int)i != excludeIndex && abs(ghosts[i].x - x) <= ghostSize/2 && abs(ghosts[i].y - y) <= ghostSize/2) {
+                return true;
+            }
+        }
+        // Also check player ghost
+        if (excludeIndex != -2 && abs(playerGhost.x - x) <= ghostSize/2 && abs(playerGhost.y - y) <= ghostSize/2) {
+            return true;
+        }
+        return false;
+    }
+
     void moveGhosts() {
-        for (auto &gh : ghosts) {
-            int bestDir = gh.dir;
+        for (size_t i = 0; i < ghosts.size(); i++) {
+            auto &gh = ghosts[i];
             int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}};
             std::vector<int> opts;
             for (int d = 0; d < 4; d++) {
                 int nx = gh.x + dirs[d][0];
                 int ny = gh.y + dirs[d][1];
-                if (canMoveTo(nx, ny, ghostSize/2)) opts.push_back(d);
+                if (canMoveTo(nx, ny, ghostSize/2) && !isPositionOccupied(nx, ny, i)) {
+                    opts.push_back(d);
+                }
             }
             if (!opts.empty()) {
                 int pick = opts[rand() % opts.size()];
@@ -235,7 +252,7 @@ public:
         int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}};
         int nx = playerGhost.x + dirs[playerGhostDir][0];
         int ny = playerGhost.y + dirs[playerGhostDir][1];
-        if (canMoveTo(nx, ny, ghostSize/2)) {
+        if (canMoveTo(nx, ny, ghostSize/2) && !isPositionOccupied(nx, ny, -2)) {
             playerGhost.x = nx;
             playerGhost.y = ny;
             playerGhost.dir = playerGhostDir;
@@ -243,8 +260,12 @@ public:
     }
 
     bool checkCollision(int ax, int ay, int ar, int bx, int by, int br) {
-        // Simple bounding box overlap
-        return abs(ax-bx) <= (ar+br-1) && abs(ay-by) <= (ar+br-1);
+        // Circular collision detection
+        int dx = ax - bx;
+        int dy = ay - by;
+        int distanceSquared = dx*dx + dy*dy;
+        int radiusSum = ar + br;
+        return distanceSquared <= radiusSum * radiusSum;
     }
 
     virtual int32_t update() override {
