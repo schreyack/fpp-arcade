@@ -223,7 +223,7 @@ public:
         
         // Place ghosts in random locations (avoiding Pacman and walls)
         ghosts.clear();
-        int numGhosts = 1;
+        int numGhosts = rand() % 3 + 1;
         
         for (int i = 0; i < numGhosts; i++) {
             Ghost g;
