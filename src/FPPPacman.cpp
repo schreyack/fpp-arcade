@@ -308,18 +308,12 @@ public:
     }
 
     void eatPelletsAtPosition(int x, int y) {
-        // Eat pellets within an extended radius of Pacman's position
-        int eatRadius = pacRadius + 1; // Slightly larger than movement radius
-        for (int pr = y - eatRadius; pr <= y + eatRadius; pr += 2) {
-            for (int pc = x - eatRadius; pc <= x + eatRadius; pc += 2) {
-                if (pr >= 0 && pr < rows && pc >= 0 && pc < cols) {
-                    int dx = pc - x;
-                    int dy = pr - y;
-                    if (dx*dx + dy*dy <= eatRadius*eatRadius) {
-                        eatenPellets.insert({pc, pr});
-                    }
-                }
-            }
+        // Eat pellet at Pacman's current position (rounded to nearest pellet grid)
+        int pelletX = (x + 1) / 2 * 2; // Round to nearest even coordinate
+        int pelletY = (y + 1) / 2 * 2;
+        
+        if (pelletX >= 0 && pelletX < cols && pelletY >= 0 && pelletY < rows) {
+            eatenPellets.insert({pelletX, pelletY});
         }
     }
 
@@ -468,7 +462,6 @@ public:
         }
 
         movePacman();
-        eatPelletsAtPosition(pacmanX, pacmanY);
         moveGhosts();
 
         // check collisions
