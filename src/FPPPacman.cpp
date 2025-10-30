@@ -374,7 +374,7 @@ public:
         for (int r = 0; r < rows; r += 2) {
             for (int c = 0; c < cols; c += 2) {
                 if (grid[r][c] == 1 && eatenPellets.find({c, r}) == eatenPellets.end()) {
-                    outputPixel(c, r, 255, 200, 0);
+                    outputPixel(c, r, 150, 150, 0);
                 }
             }
         }
