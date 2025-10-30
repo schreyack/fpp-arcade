@@ -191,17 +191,24 @@ public:
             }
         }
         
-        // Place special pellets randomly
+        // Replace some regular pellets with special pellets (2x2 blocks)
         int numSpecial = 3 + (rand() % 3); // 3 to 5 special pellets
         for (int i = 0; i < numSpecial; i++) {
             int attempts = 0;
             bool placed = false;
             do {
-                int r = rand() % rows;
-                int c = rand() % cols;
-                if (grid[r][c] == 0) { // Empty space
+                int r = (rand() % (rows / 2)) * 2; // Even row
+                int c = (rand() % (cols / 2)) * 2; // Even column
+                // Check if 2x2 block (4 pellet positions) are regular pellets
+                if (r + 2 < rows && c + 2 < cols &&
+                    grid[r][c] == 1 && grid[r][c + 2] == 1 &&
+                    grid[r + 2][c] == 1 && grid[r + 2][c + 2] == 1) {
+                    // Replace with special pellet block
                     grid[r][c] = 3;
-                    specialPellets.insert({c, r});
+                    grid[r][c + 2] = 3;
+                    grid[r + 2][c] = 3;
+                    grid[r + 2][c + 2] = 3;
+                    specialPellets.insert({c, r}); // Store top-left position
                     placed = true;
                 }
                 attempts++;
@@ -320,7 +327,7 @@ public:
                     int dx = pc - x;
                     int dy = pr - y;
                     if (dx*dx + dy*dy <= pacRadius*pacRadius && 
-                        eatenPellets.find({pc, pr}) == eatenPellets.end()) {
+                        grid[pr][pc] == 1 && eatenPellets.find({pc, pr}) == eatenPellets.end()) {
                         hasNearbyPellet = true;
                     }
                 }
@@ -368,13 +375,10 @@ public:
             for (int c = 0; c < cols; c += 2) {
                 if (grid[r][c] == 1 && eatenPellets.find({c, r}) == eatenPellets.end()) {
                     outputPixel(c, r, 255, 200, 0);
+                } else if (grid[r][c] == 3) {
+                    outputPixel(c, r, 255, 0, 255); // Magenta special pellets
                 }
             }
-        }
-        
-        // Draw special pellets
-        for (auto &p : specialPellets) {
-            outputPixel(p.first, p.second, 255, 0, 255); // Magenta special pellets
         }
         
         // draw Pacman as scaled circle with mouth
@@ -411,10 +415,16 @@ public:
         if (canMoveTo(nx, ny, pacRadius)) {
             pacmanX = nx; pacmanY = ny;
             eatPelletsAtPosition(pacmanX, pacmanY); // Eat pellets immediately after moving
-            // Check for special pellet
-            if (specialPellets.find({pacmanX, pacmanY}) != specialPellets.end()) {
-                specialPellets.erase({pacmanX, pacmanY});
-                speedBoostTimer = 10; // Speed boost for 10 updates
+            // Check for special pellet (within 4x4 area)
+            for (auto it = specialPellets.begin(); it != specialPellets.end(); ) {
+                int tlx = it->first;
+                int tly = it->second;
+                if (pacmanX >= tlx && pacmanX < tlx + 4 && pacmanY >= tly && pacmanY < tly + 4) {
+                    it = specialPellets.erase(it);
+                    speedBoostTimer = 10; // Speed boost for 10 updates
+                } else {
+                    ++it;
+                }
             }
         }
     }
