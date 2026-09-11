@@ -23,7 +23,7 @@ extern "C" {
 #include <cstring>
 #include <list>
 #include <vector>
-#include <httpserver.hpp>
+#include "fpphttp.h"
 #include <cmath>
 #include <fcntl.h>
 
@@ -292,7 +292,7 @@ void FPPArcadeGameEffect::outputString(const std::string &s, int x, int y, int r
     }
 }
 
-class FPPArcadePlugin : public FPPPlugin , public httpserver::http_resource {
+class FPPArcadePlugin : public FPPPlugin {
 public:
     
     FPPArcadePlugin() : FPPPlugin("fpp-arcade") {
@@ -435,38 +435,47 @@ public:
         return std::make_unique<Command::Result>("FPP Arcade Button Processed");
     }
     
-    virtual HTTP_RESPONSE_CONST std::shared_ptr<httpserver::http_response> render_GET(const httpserver::http_request &req) override {
-        int plen = req.get_path_pieces().size();
-        if (plen == 2) {
-            if (req.get_path_pieces()[1] == "controllers") {
-                std::string s = "[";
-                for (auto &j : joysticks) {
-                    if (s.size() > 2) {
-                        s += ",\n";
-                    }
-                    s += "  {\n";
-                    s += "    \"name\": \"";
-                    s += j.name;
-                    s += "\",\n    \"buttons\": ";
-                    s += std::to_string(j.numButtons);
-                    s += ",\n    \"axis\": ";
-                    s += std::to_string(j.numAxis);
-                    s += "\n  }";
-                }
-                s += "\n]";
-                return std::shared_ptr<httpserver::http_response>(new httpserver::string_response(s, 200, "application/json"));
-            } else  if (req.get_path_pieces()[1] == "events") {
-                std::string v;
-                for (auto &a : lastEvents) {
-                    v += a + "\n";
-                }
-                return std::shared_ptr<httpserver::http_response>(new httpserver::string_response(v, 200));
+    // FPP 10 (plugin API v6): libhttpserver is gone. Same two routes and the
+    // same response bodies as the old render_GET, registered through FPP so
+    // they can be withdrawn in unregisterApis().
+    std::string controllersJson() {
+        std::string s = "[";
+        for (auto &j : joysticks) {
+            if (s.size() > 2) {
+                s += ",\n";
             }
+            s += "  {\n";
+            s += "    \"name\": \"";
+            s += j.name;
+            s += "\",\n    \"buttons\": ";
+            s += std::to_string(j.numButtons);
+            s += ",\n    \"axis\": ";
+            s += std::to_string(j.numAxis);
+            s += "\n  }";
         }
-        return std::shared_ptr<httpserver::http_response>(new httpserver::string_response("Not found", 404));
+        s += "\n]";
+        return s;
     }
-    void registerApis(httpserver::webserver *m_ws) override {
-        m_ws->register_resource("/arcade", this, true);
+    std::string eventsText() {
+        std::string v;
+        for (auto &a : lastEvents) {
+            v += a + "\n";
+        }
+        return v;
+    }
+    void registerApis() override {
+        FPPPlugins::registerPluginApi("/arcade/controllers",
+            [this](const HttpRequestPtr &req, std::function<void(const HttpResponsePtr&)> &&callback) {
+                callback(makeStringResponse(controllersJson(), 200, "application/json"));
+            }, {drogon::Get});
+        FPPPlugins::registerPluginApi("/arcade/events",
+            [this](const HttpRequestPtr &req, std::function<void(const HttpResponsePtr&)> &&callback) {
+                callback(makeStringResponse(eventsText(), 200));
+            }, {drogon::Get});
+    }
+    void unregisterApis() override {
+        FPPPlugins::unregisterPluginApi("/arcade/controllers");
+        FPPPlugins::unregisterPluginApi("/arcade/events");
     }
 
 #ifdef USE_SDL_CONTROLLERS
