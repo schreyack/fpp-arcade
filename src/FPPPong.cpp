@@ -42,7 +42,7 @@ public:
     void CopyToModel() {
         model->clearOverlayBuffer();
         char buf[25];
-        sprintf(buf, "%d:%d", p1Score, p2Score);
+        snprintf(buf, sizeof(buf), "%d:%d", p1Score, p2Score);
         int len = strlen(buf);
         float scl = scale;
         

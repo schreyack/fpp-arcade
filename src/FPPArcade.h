@@ -13,7 +13,7 @@ public:
     virtual const std::string &getName() = 0;
     
     virtual void button(const std::string &button) {}
-    virtual void axis(const std::string &axis, int value,const std::string &joystickName = "");
+    virtual void axis(const std::string &axis, int value, const std::string &joystickName = "");
 
     
     virtual bool isRunning();

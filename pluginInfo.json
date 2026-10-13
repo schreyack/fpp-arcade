@@ -1,12 +1,13 @@
 {
-	"repoName": "fpp-arcade2",
-	"name": "FPP Arcade Multi-Player",
-	"author": "Daniel Kulp",
-	"description": "Various Games to Play on FPP Pixel Overlay Models.  Enables Multi-Player functionality for games that support it. (Currently only Pong).",
-	"homeURL": "https://github.com/schreyack/fpp-arcade",
-	"srcURL": "https://github.com/schreyack/fpp-arcade.git",
-	"bugURL": "https://github.com/schreyack/fpp-arcade/issues",
-	"versions": [
+    "repoName": "fpp-arcade2",
+    "name": "FPP Arcade Multi-Player",
+    "author": "Daniel Kulp",
+    "description": "Various Games to Play on FPP Pixel Overlay Models.  Enables Multi-Player functionality for games that support it (Pong), and adds Pacman.",
+    "homeURL": "https://github.com/schreyack/fpp-arcade",
+    "srcURL": "https://github.com/schreyack/fpp-arcade.git",
+    "bugURL": "https://github.com/schreyack/fpp-arcade/issues",
+    "iconURL": "https://raw.githubusercontent.com/schreyack/fpp-arcade/master/icon.png",
+    "versions": [
         {
             "minFPPVersion": "4.0",
             "maxFPPVersion": "5.99",
@@ -24,16 +25,39 @@
             "minFPPVersion": "7.0",
             "maxFPPVersion": "8.99",
             "branch": "master",
-            "sha": "",
+            "sha": "4723c22f89200e25d683d73e310f96a922438814",
             "allowUpdates": 1
         },
-	{
+        {
             "minFPPVersion": "9.0",
+            "maxFPPVersion": "0",
+            "branch": "master",
+            "sha": "4723c22f89200e25d683d73e310f96a922438814",
+            "allowUpdates": 1
+        },
+        {
+            "minFPPVersion": "10.0",
             "maxFPPVersion": "0",
             "branch": "master",
             "sha": "",
             "allowUpdates": 1
-        }	
-	]
+        }
+    ],
+    "privacy": {
+        "summary": "Runs on this device. Reads a USB gamepad if you plug one in; nothing is stored. A controller button can be set to send its command to other FPP players you pick.",
+        "sends": [
+            {
+                "to": "the FPP players you pick in a controller mapping",
+                "what": "the FPP command you mapped to a controller button or axis",
+                "why": "to run that command on other players in your show",
+                "alwaysOn": false
+            }
+        ],
+        "collects": [],
+        "sensors": [],
+        "remoteAccess": "none",
+        "systemChanges": [],
+        "closedCode": false,
+        "other": "Reads any USB joystick or gamepad plugged into this device and keeps the last 20 button presses in memory (readable on its Joysticks page and at /api/plugin-apis/arcade/events by anyone who can open FPP's web pages; cleared when fppd restarts); nothing is written to disk. Its game and joystick settings (config/plugin.fpp-arcade.json and config/joysticks.json) are kept after uninstall."
+    }
 }
-

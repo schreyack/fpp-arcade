@@ -7,8 +7,14 @@ debug: all
 
 CFLAGS+=-I.
 OBJECTS_fpp_arcade_so += src/FPPArcade.o src/FPPTetris.o src/FPPPong.o src/FPPSnake.o src/FPPBreakout.o src/FPPPacman.o
-LIBS_fpp_arcade_so += -L$(SRCDIR) -lfpp -ljsoncpp -ldrogon -ltrantor -lSDL2
+LIBS_fpp_arcade_so += -L$(SRCDIR) -lfpp -ljsoncpp -ldrogon -ltrantor
 CXXFLAGS_src/FPPArcade.o += -I$(SRCDIR)
+
+# SDL is only used for game-controller input on macOS, where there is no
+# /dev/input/jsN. Linux/Pi use the raw Linux joystick API and don't link SDL.
+ifeq '$(ARCH)' 'OSX'
+LIBS_fpp_arcade_so += -lSDL2
+endif
 
 
 %.o: %.cpp Makefile

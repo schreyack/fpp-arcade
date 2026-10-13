@@ -18,18 +18,21 @@
 extern "C" {
 #include <SDL2/SDL.h>
 }
+#include "Timers.h"
 #endif
 #include <arpa/inet.h>
 #include <cstring>
 #include <list>
 #include <vector>
-#include "fpphttp.h"
 #include <cmath>
 #include <fcntl.h>
+#include <mutex>
 
 #include "FPPArcade.h"
 
 #include "commands/Commands.h"
+#include "fpphttp.h"
+#include "FileMonitor.h"
 #include "common.h"
 #include "settings.h"
 #include "Plugin.h"
@@ -62,6 +65,65 @@ static std::vector<std::string> BUTTONS({
 static std::vector<std::string> AXIS({
     "Up -> Down", "Left -> Right", "Down -> Up", "Right -> Left"
 });
+
+namespace {
+struct ArcadeControllerInfo {
+    std::string name;
+    int numButtons;
+    int numAxis;
+};
+
+std::mutex gArcadeControllersLock;
+std::vector<ArcadeControllerInfo> gArcadeControllers;
+
+std::mutex gArcadeEventsLock;
+std::list<std::string> gArcadeLastEvents;
+
+std::vector<ArcadeControllerInfo> getArcadeControllersSnapshot() {
+    std::lock_guard<std::mutex> lock(gArcadeControllersLock);
+    return gArcadeControllers;
+}
+
+std::list<std::string> getArcadeEventsSnapshot() {
+    std::lock_guard<std::mutex> lock(gArcadeEventsLock);
+    return gArcadeLastEvents;
+}
+
+void setArcadeControllers(std::vector<ArcadeControllerInfo>&& controllers) {
+    std::lock_guard<std::mutex> lock(gArcadeControllersLock);
+    gArcadeControllers = std::move(controllers);
+}
+
+void appendArcadeEvent(const std::string &s) {
+    std::lock_guard<std::mutex> lock(gArcadeEventsLock);
+    gArcadeLastEvents.push_back(s);
+    while (gArcadeLastEvents.size() > 20) {
+        gArcadeLastEvents.pop_front();
+    }
+}
+
+void resetArcadeState() {
+    {
+        std::lock_guard<std::mutex> lock(gArcadeControllersLock);
+        gArcadeControllers.clear();
+    }
+    {
+        std::lock_guard<std::mutex> lock(gArcadeEventsLock);
+        gArcadeLastEvents.clear();
+    }
+}
+
+std::string getArcadePath(const HttpRequestPtr& req) {
+    std::vector<std::string> pieces = getPathPieces(req->path());
+    if (pieces.size() == 2 && pieces[0] == "arcade") {
+        return pieces[1];
+    }
+    if (pieces.size() == 4 && pieces[0] == "api" && pieces[1] == "plugin-apis" && pieces[2] == "arcade") {
+        return pieces[3];
+    }
+    return std::string();
+}
+}
 
 class FPPArcadePlugin;
 class FPPArcadeCommand : public Command {
@@ -182,8 +244,8 @@ void FPPArcadeGame::axis(const std::string &axis, int value, const std::string &
         lastValues[1] = value;
     }
     if (btn != "") {
-        if (joystickName!=""){
-            btn += "|"+joystickName;
+        if (joystickName != "") {
+            btn += "|" + joystickName;
         }
         button(btn);
     }
@@ -292,12 +354,24 @@ void FPPArcadeGameEffect::outputString(const std::string &s, int x, int y, int r
     }
 }
 
-class FPPArcadePlugin : public FPPPlugin {
+class FPPArcadePlugin : public FPPPlugins::Plugin, public FPPPlugins::APIProviderPlugin {
 public:
     
-    FPPArcadePlugin() : FPPPlugin("fpp-arcade") {
+    FPPArcadePlugin() : FPPPlugins::Plugin("fpp-arcade"), FPPPlugins::APIProviderPlugin() {
         LogInfo(VB_PLUGIN, "Initializing Arcade Plugin\n");
-        
+        resetArcadeState();
+
+        // This plugin's configuration is its own JSON file rather than the
+        // key=value settings file FPPPlugins::Plugin watches, so the
+        // monitorSettings constructor argument would not see it. Watch it
+        // directly, so editing the game list takes effect without restarting
+        // fppd. shutdown() gives the watch back - the callback lives here.
+        std::function<void()> reload = [this]() {
+            LogInfo(VB_PLUGIN, "Arcade: game configuration changed, reloading\n");
+            loadGames();
+        };
+        FileMonitor::INSTANCE.AddFile(name, FPP_DIR_CONFIG("/plugin.fpp-arcade.json"), reload);
+
         int idx = 0;
         if (FileExists(FPP_DIR_CONFIG("/plugin.fpp-arcade.json"))) {
             Json::Value root;
@@ -337,7 +411,82 @@ public:
             }
         }
     }
+    // Give back everything outside this library that points into it. Nothing
+    // here is asynchronous, so no readiness predicate is needed.
+    // Rebuild the game list from what is on disk now. Runs on the main loop,
+    // which is also where the games are stepped and where a button event
+    // reaches them, so nothing can be part way through one.
+    void loadGames() {
+        for (auto &a : games) {
+            for (auto &g : a.second) {
+                // Stop anything running on a model before its game goes: the
+                // effect is owned by the overlay model, not by us.
+                if (g && g->isRunning()) {
+                    g->stop();
+                }
+                delete g;
+            }
+        }
+        games.clear();
+
+        int idx = 0;
+        if (FileExists(FPP_DIR_CONFIG("/plugin.fpp-arcade.json"))) {
+            Json::Value root;
+            if (LoadJsonFromFile(FPP_DIR_CONFIG("/plugin.fpp-arcade.json"), root)
+                && root.isMember("games")) {
+                for (int x = 0; x < root["games"].size(); x++) {
+                    if (root["games"][x]["enabled"].asBool()) {
+                        std::string model = root["games"][x]["model"].asString();
+                        games[model].push_back(createGame(root["games"][x]));
+                        if (games[model].back() != nullptr) {
+                            games[model].back()->setIdx(++idx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    virtual std::function<bool()> shutdown() override {
+        FileMonitor::INSTANCE.RemoveFile(name, FPP_DIR_CONFIG("/plugin.fpp-arcade.json"));
+#ifdef USE_SDL_CONTROLLERS
+        // Stop pumping SDL, then take back the event filter. SDL keeps
+        // controller_event_filter - a function pointer into this .so - in a
+        // global, and FPP uses SDL for its own audio and pumps events itself,
+        // so a filter left installed is a call into an unmapped library the
+        // moment SDL next sees an event. Deliberately NO SDL_Quit(): SDL is
+        // shared with FPP's audio output and this plugin does not own it.
+        Timers::INSTANCE.stopPeriodicTimer("ArcadeSDLEventPump");
+        SDL_SetEventFilter(nullptr, nullptr);
+#endif
+        // The Command subclasses are declared here, so their vtables live in
+        // this .so and they hold a back-pointer to this plugin.
+        for (Command *c : myCommands) {
+            // removeCommand() only unregisters - CommandManager deletes what is
+            // still in its registry at shutdown, so taking one back means
+            // owning it again.
+            CommandManager::INSTANCE.removeCommand(c);
+            delete c;
+        }
+        myCommands.clear();
+        // Release the controller handles and joystick descriptors now rather
+        // than at destruction, so a reload can reopen them. FPP has already
+        // taken the descriptors out of its epoll loop by this point.
+        {
+            std::lock_guard<std::mutex> lock(joysticksLock);
+            joysticks.clear();
+        }
+        resetArcadeState();
+        return nullptr;
+    }
+
     virtual ~FPPArcadePlugin() {
+#ifdef USE_SDL_CONTROLLERS
+        // Belt and braces if teardown never went through shutdown().
+        Timers::INSTANCE.stopPeriodicTimer("ArcadeSDLEventPump");
+        SDL_SetEventFilter(nullptr, nullptr);
+#endif
+        resetArcadeState();
         for (auto & a : games) {
             for (auto &g : a.second) {
                 delete g;
@@ -385,10 +534,13 @@ public:
     std::unique_ptr<Command::Result>  selectGame(const std::vector<std::string> &args) {
         int idx = std::atoi(args[0].c_str());
         const std::string model = args.size() > 1 ? args[1] : "";
+        int max = games[model].size();
+        if (max == 0) {
+            return std::make_unique<Command::ErrorResult>("FPP Arcade No games configured for model " + model);
+        }
         if (games[model].front()->isRunning()) {
             games[model].front()->stop();
         }
-        int max = games[model].size();
         for (int x = 0; x < max; x++) {
             FPPArcadeGame *g = games[model].front();
             if (g->getIdx() == idx) {
@@ -404,15 +556,16 @@ public:
         const std::string axis = args[0];
         const std::string model = args.size() > 1 ? args[1] : "";
         int value = args.size() > 2 ? std::atoi(args[2].c_str()) : 0;
-        const std::string joystickName = args.size()>3 ? args[3] : "";
+        const std::string joystickName = args.size() > 3 ? args[3] : "";
+
         if (model != "") {
             if (!games[model].empty()) {
-                games[model].front()->axis(axis, value);
+                games[model].front()->axis(axis, value, joystickName);
             }
         } else {
             for (auto &a : games) {
                 if (!a.second.empty()) {
-                    a.second.front()->axis(axis, value,joystickName);
+                    a.second.front()->axis(axis, value, joystickName);
                 }
             }
         }
@@ -435,45 +588,57 @@ public:
         return std::make_unique<Command::Result>("FPP Arcade Button Processed");
     }
     
-    // FPP 10 (plugin API v6): libhttpserver is gone. Same two routes and the
-    // same response bodies as the old render_GET, registered through FPP so
-    // they can be withdrawn in unregisterApis().
-    std::string controllersJson() {
-        std::string s = "[";
-        for (auto &j : joysticks) {
-            if (s.size() > 2) {
-                s += ",\n";
-            }
-            s += "  {\n";
-            s += "    \"name\": \"";
-            s += j.name;
-            s += "\",\n    \"buttons\": ";
-            s += std::to_string(j.numButtons);
-            s += ",\n    \"axis\": ";
-            s += std::to_string(j.numAxis);
-            s += "\n  }";
-        }
-        s += "\n]";
-        return s;
-    }
-    std::string eventsText() {
-        std::string v;
-        for (auto &a : lastEvents) {
-            v += a + "\n";
-        }
-        return v;
-    }
     void registerApis() override {
-        FPPPlugins::registerPluginApi("/arcade/controllers",
-            [this](const HttpRequestPtr &req, std::function<void(const HttpResponsePtr&)> &&callback) {
-                callback(makeStringResponse(controllersJson(), 200, "application/json"));
-            }, {drogon::Get});
-        FPPPlugins::registerPluginApi("/arcade/events",
-            [this](const HttpRequestPtr &req, std::function<void(const HttpResponsePtr&)> &&callback) {
-                callback(makeStringResponse(eventsText(), 200));
-            }, {drogon::Get});
+        LogInfo(VB_PLUGIN, "Registering Arcade Plugin APIs\n");
+        auto handleArcade = [](const HttpRequestPtr& req,
+                                   std::function<void(const HttpResponsePtr&)>&& callback) {
+            std::string path = getArcadePath(req);
+            LogDebug(VB_PLUGIN, "Arcade API Request: %s\n", path.c_str());
+            if (path == "controllers") {
+                auto joystickSnapshot = getArcadeControllersSnapshot();
+
+                Json::Value response(Json::arrayValue);
+                for (const auto &j : joystickSnapshot) {
+                    Json::Value c;
+                    c["name"] = j.name;
+                    c["buttons"] = j.numButtons;
+                    c["axis"] = j.numAxis;
+                    response.append(c);
+                }
+
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string s = Json::writeString(writer, response);
+                callback(makeStringResponse(s, 200, "application/json"));
+            } else if (path == "events") {
+                auto eventsSnapshot = getArcadeEventsSnapshot();
+                std::string v;
+                for (auto &a : eventsSnapshot) {
+                    v += a + "\n";
+                }
+                callback(makeStringResponse(v, 200));
+            } else {
+                callback(makeStringResponse("Not found", 404));
+            }
+        };
+        auto handleArcade2 = handleArcade;
+
+        // Only the plain paths are needed: Apache rewrites
+        // api/plugin-apis/arcade/* to localhost:32322/arcade/*, stripping the
+        // plugin-apis/ prefix, so "/api/plugin-apis/arcade/*" routes would
+        // never be reached.
+        //
+        // Registered through FPP rather than drogon::app() directly: drogon has
+        // no route removal, so a handler registered straight with it could never
+        // be withdrawn and would pin this plugin in memory for the life of fppd.
+        FPPPlugins::registerPluginApi("/arcade/controllers", std::move(handleArcade), {drogon::Get});
+        FPPPlugins::registerPluginApi("/arcade/events", std::move(handleArcade2), {drogon::Get});
     }
+
     void unregisterApis() override {
+        // Neither returns until no request is inside the handler and the
+        // handler itself has been destroyed, which is what makes a later
+        // dlclose() safe.
         FPPPlugins::unregisterPluginApi("/arcade/controllers");
         FPPPlugins::unregisterPluginApi("/arcade/events");
     }
@@ -487,38 +652,48 @@ public:
         switch (event->type) {
             case SDL_CONTROLLERAXISMOTION: {
                 SDL_ControllerAxisEvent *ae = (SDL_ControllerAxisEvent*)event;
-                for (auto &j : joysticks) {
-                    if (j.joystickId == ae->which) {
-                        std::string s = j.name;
-                        s += " - ";
-                        s += "axis: " + std::to_string(ae->axis);
-                        s += ", value: " + std::to_string(ae->value);
-                        lastEvents.push_back(s);
-                        while (lastEvents.size() > 20) {
-                            lastEvents.pop_front();
+                std::string joystickName;
+                {
+                    std::lock_guard<std::mutex> lock(joysticksLock);
+                    for (const auto &j : joysticks) {
+                        if (j.joystickId == ae->which) {
+                            joystickName = j.name;
+                            break;
                         }
-                        std::string evnt = j.name + ":a" + std::to_string(ae->axis);
-                        processEvent(evnt, ae->value);
                     }
+                }
+                if (!joystickName.empty()) {
+                    std::string s = joystickName;
+                    s += " - ";
+                    s += "axis: " + std::to_string(ae->axis);
+                    s += ", value: " + std::to_string(ae->value);
+                    appendLastEvent(s);
+                    std::string evnt = joystickName + ":a" + std::to_string(ae->axis);
+                    processEvent(evnt, ae->value);
                 }
                 return 0;
             }
             case SDL_CONTROLLERBUTTONDOWN:
             case SDL_CONTROLLERBUTTONUP: {
                 SDL_ControllerButtonEvent *be = (SDL_ControllerButtonEvent*)event;
-                for (auto &j : joysticks) {
-                    if (j.joystickId == be->which) {
-                        std::string s = j.name;
-                        s += " - ";
-                        s += "button: " + std::to_string(be->button);
-                        s += ", value: " + std::to_string(be->state);
-                        lastEvents.push_back(s);
-                        while (lastEvents.size() > 20) {
-                            lastEvents.pop_front();
+                std::string joystickName;
+                {
+                    std::lock_guard<std::mutex> lock(joysticksLock);
+                    for (const auto &j : joysticks) {
+                        if (j.joystickId == be->which) {
+                            joystickName = j.name;
+                            break;
                         }
-                        std::string evnt = j.name + ":" + std::to_string(be->button) + ":" + std::to_string(be->state);
-                        processEvent(evnt, be->state);
                     }
+                }
+                if (!joystickName.empty()) {
+                    std::string s = joystickName;
+                    s += " - ";
+                    s += "button: " + std::to_string(be->button);
+                    s += ", value: " + std::to_string(be->state);
+                    appendLastEvent(s);
+                    std::string evnt = joystickName + ":" + std::to_string(be->button) + ":" + std::to_string(be->state);
+                    processEvent(evnt, be->state);
                 }
                 return 0;
             }
@@ -527,7 +702,24 @@ public:
     }
 #endif
 
+    void appendLastEvent(const std::string &s) {
+        appendArcadeEvent(s);
+    }
+
+    void updateControllerSnapshot() {
+        std::vector<ArcadeControllerInfo> controllers;
+        {
+            std::lock_guard<std::mutex> lock(joysticksLock);
+            controllers.reserve(joysticks.size());
+            for (const auto &j : joysticks) {
+                controllers.push_back({j.name, j.numButtons, j.numAxis});
+            }
+        }
+        setArcadeControllers(std::move(controllers));
+    }
+
     void checkUniqueNames() {
+        std::lock_guard<std::mutex> lock(joysticksLock);
         std::map<std::string, int> names;
         for (auto &j : joysticks) {
             names[j.name]++;
@@ -536,35 +728,72 @@ public:
             }
         }
     }
+    void addOwnedCommand(Command *c) {
+        myCommands.push_back(c);
+        CommandManager::INSTANCE.addCommand(c);
+    }
+
     virtual void addControlCallbacks(std::map<int, std::function<bool(int)>> &callbacks) override {
-        CommandManager::INSTANCE.addCommand(new FPPArcadeCommand(this));
-        CommandManager::INSTANCE.addCommand(new FPPArcadeAxisCommand(this));
-        CommandManager::INSTANCE.addCommand(new FPPArcadeSelectGameCommand(this));
+        addOwnedCommand(new FPPArcadeCommand(this));
+        addOwnedCommand(new FPPArcadeAxisCommand(this));
+        addOwnedCommand(new FPPArcadeSelectGameCommand(this));
 
 #ifdef USE_SDL_CONTROLLERS
         SDL_Init(SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS);
         SDL_SetEventFilter(controller_event_filter, this);
-        for (int x = 0; x < SDL_NumJoysticks(); x++) {
-            if (SDL_IsGameController(x)) {
-                joysticks.emplace_back(Joystick(x));
+        // fppd no longer pumps the SDL event queue (it dropped the periodic
+        // SDL_PollEvent loop it used to run). We must pump it ourselves or it
+        // grows unbounded and controller input is never processed. Draining via
+        // SDL_PollEvent runs the event filter (handling controller input) and
+        // discards everything else. addPeriodicTimer fires on the main-loop
+        // thread, which is required for SDL event handling on macOS.
+        Timers::INSTANCE.addPeriodicTimer("ArcadeSDLEventPump", 16, []() {
+            SDL_Event ev;
+            while (SDL_PollEvent(&ev)) {
+                // Controller events are handled in controller_event_filter;
+                // any remaining events are intentionally discarded.
+            }
+        });
+        {
+            std::lock_guard<std::mutex> lock(joysticksLock);
+            for (int x = 0; x < SDL_NumJoysticks(); x++) {
+                if (SDL_IsGameController(x)) {
+                    joysticks.emplace_back(Joystick(x));
+                }
             }
         }
         checkUniqueNames();
 #else
-        for (int x = 0; x < 10; x++) {
-            std::string js = "/dev/input/js" + std::to_string(x);
-            if (FileExists(js)) {
-                int i = open(js.c_str(), O_RDONLY | O_NONBLOCK);
-                joysticks.emplace_back(Joystick(i));
+        {
+            std::lock_guard<std::mutex> lock(joysticksLock);
+            for (int x = 0; x < 10; x++) {
+                std::string js = "/dev/input/js" + std::to_string(x);
+                if (FileExists(js)) {
+                    int i = open(js.c_str(), O_RDONLY | O_NONBLOCK);
+                    if (i >= 0) {
+                        joysticks.emplace_back(Joystick(i));
+                    } else {
+                        LogWarn(VB_PLUGIN, "Could not open %s: %s\n", js.c_str(), strerror(errno));
+                    }
+                }
             }
         }
         checkUniqueNames();
-        for (auto & a : joysticks) {
-            callbacks[a.file] = [&a, this] (int f) {
+
+        std::vector<std::pair<int, std::string>> joystickSnapshot;
+        {
+            std::lock_guard<std::mutex> lock(joysticksLock);
+            joystickSnapshot.reserve(joysticks.size());
+            for (const auto &a : joysticks) {
+                joystickSnapshot.emplace_back(a.file, a.name);
+            }
+        }
+        for (const auto &a : joystickSnapshot) {
+            callbacks[a.first] = [joyName = a.second, this] (int f) {
                 struct js_event ev;
                 while (read(f, &ev, sizeof(ev)) > 0) {
                     if (!(ev.type & JS_EVENT_INIT)) {
-                        std::string s = a.name;
+                        std::string s = joyName;
                         s += " - ";
                         if (ev.type == 1) {
                             s += "button: " + std::to_string(ev.number);
@@ -572,12 +801,9 @@ public:
                             s += "axis: " + std::to_string(ev.number);
                         }
                         s += ", value: " + std::to_string(ev.value);
-                        lastEvents.push_back(s);
-                        while (lastEvents.size() > 20) {
-                            lastEvents.pop_front();
-                        }
+                        appendLastEvent(s);
                         
-                        std::string evnt = a.name + ":" + (ev.type == 2 ? "a" : "") + std::to_string(ev.number);
+                        std::string evnt = joyName + ":" + (ev.type == 2 ? "a" : "") + std::to_string(ev.number);
                         if (ev.type == 1) {
                             evnt += ":" + std::to_string(ev.value);
                         }
@@ -588,6 +814,7 @@ public:
             };
         }
 #endif
+    updateControllerSnapshot();
     }
     
     void processEvent(const std::string &ev, int value) {
@@ -597,8 +824,6 @@ public:
                 if (f->second["command"] == "FPP Arcade Axis") {
                     Json::Value val = f->second;
                     val["args"][2] = std::to_string(value);
-                    //add controller name
-                    val["args"].append("");
                     size_t colonPos = ev.find(':');
                     if (colonPos != std::string::npos) {
                         val["args"][3] = ev.substr(0, colonPos);
@@ -629,10 +854,26 @@ public:
             numButtons = tmp;
 #else
             controller = SDL_GameControllerOpen(f);
-            joystickId = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller));
-            name = SDL_GameControllerName(controller);
-            numAxis = SDL_JoystickNumAxes(SDL_GameControllerGetJoystick(controller));
-            numButtons = std::max(15, SDL_JoystickNumButtons(SDL_GameControllerGetJoystick(controller)));
+            if (!controller) {
+                joystickId = -1;
+                name = "SDL Controller " + std::to_string(f);
+                LogWarn(VB_PLUGIN, "Could not open SDL controller %d: %s\n", f, SDL_GetError());
+            } else {
+                SDL_Joystick *joystick = SDL_GameControllerGetJoystick(controller);
+                if (!joystick) {
+                    joystickId = -1;
+                    name = "SDL Controller " + std::to_string(f);
+                    LogWarn(VB_PLUGIN, "Could not get SDL joystick for controller %d: %s\n", f, SDL_GetError());
+                    SDL_GameControllerClose(controller);
+                    controller = nullptr;
+                } else {
+                    const char *controllerName = SDL_GameControllerName(controller);
+                    joystickId = SDL_JoystickInstanceID(joystick);
+                    name = controllerName ? controllerName : ("SDL Controller " + std::to_string(f));
+                    numAxis = SDL_JoystickNumAxes(joystick);
+                    numButtons = std::max(15, SDL_JoystickNumButtons(joystick));
+                }
+            }
 #endif
         }
         Joystick(Joystick &&j) : file(j.file), name(j.name), numButtons(j.numButtons), numAxis(j.numAxis), controller(j.controller), joystickId(j.joystickId) {
@@ -663,8 +904,9 @@ public:
     };
     
     std::list<Joystick> joysticks;
-    std::list<std::string> lastEvents;
+    std::mutex joysticksLock;
     std::map<std::string, Json::Value> events;
+    std::vector<Command *> myCommands;
 };
 
 
@@ -678,8 +920,17 @@ std::unique_ptr<Command::Result> FPPArcadeSelectGameCommand::run(const std::vect
     return plugin->selectGame(args);
 }
 
+// Safe to dlclose() on unload: no threads of its own, no CurlManager requests
+// and no drogon client objects. The routes go through registerPluginApi() and
+// come back in unregisterApis(); shutdown() stops the SDL pump timer, takes
+// back the SDL event filter (a function pointer into this library that SDL
+// holds globally), withdraws the three commands and releases the controllers
+// and joystick descriptors. SDL itself is left initialised on purpose - FPP's
+// audio output shares it.
+FPP_PLUGIN_SUPPORTS_UNLOAD()
+
 extern "C" {
-    FPPPlugin *createPlugin() {
+    FPPPlugins::Plugin *createPlugin() {
         return new FPPArcadePlugin();
     }
 }
