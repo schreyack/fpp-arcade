@@ -629,7 +629,14 @@ public:
         FPPArcadeMenu *menu = dynamic_cast<FPPArcadeMenu*>(m->getRunningEffect());
         if (menu) {
             if (auto item = menu->press(press)) {
-                launch(model, list, *item);
+                if (launch(model, list, *item)) {
+                    // The press that started the game also steers it.
+                    if (axis != "") {
+                        list.front()->axis(axis, value, joystickName);
+                    } else if (isDirection(button)) {
+                        list.front()->button(button);
+                    }
+                }
             }
         }
     }
@@ -672,7 +679,8 @@ public:
         return s;
     }
 
-    void launch(const std::string &model, std::list<FPPArcadeGame *> &list, const FPPArcadeMenu::Item &item) {
+    // Start what was picked; true when that was a game.
+    bool launch(const std::string &model, std::list<FPPArcadeGame *> &list, const FPPArcadeMenu::Item &item) {
         if (!item.playlist.empty()) {
             // Pauses whatever show is playing, plays the song, then resumes
             // the show where it was paused; buttons stay locked until then.
@@ -686,7 +694,7 @@ public:
             cmd["args"].append("0");
             cmd["args"].append("false");
             CommandManager::INSTANCE.run(cmd);
-            return;
+            return false;
         }
         for (size_t x = 0; x < list.size() && list.front()->getIdx() != item.game; x++) {
             list.push_back(list.front());
@@ -696,6 +704,7 @@ public:
         lastGameInput[model] = std::chrono::steady_clock::now();
         // The game replaces the menu on the model as it starts.
         list.front()->button("Start - Pressed");
+        return true;
     }
 
     // Once a second, on the main loop: unlock the buttons once the dance

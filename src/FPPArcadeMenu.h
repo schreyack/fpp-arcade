@@ -11,8 +11,10 @@
 //
 // Screen one offers PLAY and DANCE; PLAY lists the model's games and DANCE
 // lists the "Dance - <name>" playlists. Up/Down move the highlight, Start or
-// Fire picks, Select goes back a screen. The menu closes itself after
-// MENU_IDLE_SECONDS without input, handing the model back to the show.
+// Fire picks, Select goes back a screen. A picked game waits on a "press a
+// button to start" screen so it does not start until the player is ready.
+// The menu closes itself after MENU_IDLE_SECONDS without input, handing the
+// model back to the show.
 class FPPArcadeMenu : public FPPArcadeGameEffect {
 public:
     struct Item {
@@ -33,17 +35,19 @@ public:
     std::optional<Item> press(const std::string &button);
 
 private:
-    enum Screen { TOP, GAMES, SONGS };
+    enum Screen { TOP, GAMES, SONGS, READY };
 
     const std::vector<Item> &itemsFor(Screen s) const;
     void drawTop();
     void drawList(const std::string &title, const std::vector<Item> &items);
+    void drawReady();
     void closeNow();
 
     std::vector<Item> games;
     std::vector<Item> songs;
     Screen screen = TOP;
     int selected = 0;
+    Item ready;  // the game waiting on the READY screen
     bool closing = false;
     std::chrono::steady_clock::time_point lastInput;
 };

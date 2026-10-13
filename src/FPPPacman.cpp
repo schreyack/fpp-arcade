@@ -44,6 +44,9 @@ public:
     bool Paused = false;
     bool WaitingUntilOutput = false;
     long long timer = 75;
+    // The computer ghosts hold still this many updates (about 2 seconds) at the
+    // start, so the player has a moment to get going.
+    int ghostHoldTicks = 27;
     int speedBoostTimer = 0;
     int endTimer = 0;
     std::string endMessage = "";
@@ -227,7 +230,7 @@ public:
         
         for (int i = 0; i < numGhosts; i++) {
             Ghost g;
-            // Random position, but at least 8 units away from Pacman (Euclidean distance), not on walls, and not too close to other ghosts
+            // Random position, but at least 20 units away from Pacman (Euclidean distance), not on walls, and not too close to other ghosts
             int attempts = 0;
             bool tooClose = false;
             do {
@@ -244,7 +247,7 @@ public:
                         break;
                     }
                 }
-            } while ((((g.x - pacmanX)*(g.x - pacmanX) + (g.y - pacmanY)*(g.y - pacmanY) < 64 || grid[g.y][g.x] == 2) || tooClose) && attempts < 20);
+            } while ((((g.x - pacmanX)*(g.x - pacmanX) + (g.y - pacmanY)*(g.y - pacmanY) < 400 || grid[g.y][g.x] == 2) || tooClose) && attempts < 100);
             
             g.dir = rand() % 4;
             ghosts.push_back(g);
@@ -267,7 +270,7 @@ public:
                     break;
                 }
             }
-        } while ((((playerGhost.x - pacmanX)*(playerGhost.x - pacmanX) + (playerGhost.y - pacmanY)*(playerGhost.y - pacmanY) < 64 || grid[playerGhost.y][playerGhost.x] == 2) || tooClose) && attempts < 20);
+        } while ((((playerGhost.x - pacmanX)*(playerGhost.x - pacmanX) + (playerGhost.y - pacmanY)*(playerGhost.y - pacmanY) < 400 || grid[playerGhost.y][playerGhost.x] == 2) || tooClose) && attempts < 100);
         playerGhost.dir = 0;
         playerGhostSpeedBoostTimer = 0;
 
@@ -479,7 +482,11 @@ public:
     }
 
     void moveGhosts() {
-        for (size_t i = 0; i < ghosts.size(); i++) {
+        bool holding = ghostHoldTicks > 0;
+        if (holding) {
+            ghostHoldTicks--;
+        }
+        for (size_t i = 0; !holding && i < ghosts.size(); i++) {
             auto &gh = ghosts[i];
             int dirs[4][2] = {{-1,0},{0,-1},{1,0},{0,1}}; // left, up, right, down
             

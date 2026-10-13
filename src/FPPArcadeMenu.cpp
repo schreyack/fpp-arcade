@@ -31,6 +31,11 @@ const std::vector<FPPArcadeMenu::Item> &FPPArcadeMenu::itemsFor(Screen s) const 
 
 std::optional<FPPArcadeMenu::Item> FPPArcadeMenu::press(const std::string &button) {
     lastInput = std::chrono::steady_clock::now();
+    if (screen == READY) {
+        // Any press at all starts the waiting game.
+        closing = true;
+        return ready;
+    }
     int count = screen == TOP ? 2 : (int)itemsFor(screen).size();
     if (button == "Up") {
         selected = std::max(0, selected - 1);
@@ -46,8 +51,14 @@ std::optional<FPPArcadeMenu::Item> FPPArcadeMenu::press(const std::string &butto
             screen = selected == 0 ? GAMES : SONGS;
             selected = 0;
         } else if (selected < count) {
+            const Item &item = itemsFor(screen)[selected];
+            if (item.game) {
+                ready = item;
+                screen = READY;
+                return std::nullopt;
+            }
             closing = true;
-            return itemsFor(screen)[selected];
+            return item;
         }
     }
     return std::nullopt;
@@ -62,6 +73,8 @@ int32_t FPPArcadeMenu::update() {
     model->clearOverlayBuffer();
     if (screen == TOP) {
         drawTop();
+    } else if (screen == READY) {
+        drawReady();
     } else if (screen == GAMES) {
         drawList("PLAY", games);
     } else {
@@ -110,6 +123,20 @@ void FPPArcadeMenu::drawList(const std::string &title, const std::vector<Item> &
         }
         outputString(items[i].label.substr(0, maxChars), 5, y,
                      pick ? PICK_R : OTHER_R, pick ? PICK_G : OTHER_G, pick ? PICK_B : OTHER_B, 1);
+    }
+}
+
+void FPPArcadeMenu::drawReady() {
+    int cols, rows;
+    model->getSize(cols, rows);
+    auto centered = [cols](const std::string &s) { return std::max(0, (cols - ((int)s.size() * 4 - 1)) / 2); };
+    outputString(ready.label, centered(ready.label), rows / 2 - 11, TITLE_R, TITLE_G, TITLE_B, 1);
+    // Blink the prompt so it reads as something to act on.
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    if ((ms / 600) % 2 == 0) {
+        outputString("PRESS A BUTTON", centered("PRESS A BUTTON"), rows / 2 - 2, PICK_R, PICK_G, PICK_B, 1);
+        outputString("TO START", centered("TO START"), rows / 2 + 4, PICK_R, PICK_G, PICK_B, 1);
     }
 }
 
