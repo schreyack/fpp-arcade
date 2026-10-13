@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Nothing to do here in the normal case.  fppd loads libfpp-arcade.so once at its own
+# Nothing to do here in the normal case.  fppd loads libfpp-arcade2.so once at its own
 # startup, and scripts/fpp_install.sh - plus FPP's own core-upgrade pass, which
 # rebuilds every plugin that has a Makefile - is what produces it.  This hook
 # used to run an unconditional 'make', which delayed every single fppd start by
@@ -13,7 +13,7 @@ BASEDIR=$(dirname $0)
 cd $BASEDIR
 cd ..
 
-if [ ! -f libfpp-arcade.so ]; then
-    echo "Running fpp-arcade PreStart Script - libfpp-arcade.so is missing, rebuilding"
+if [ ! -f libfpp-arcade2.so ]; then
+    echo "Running fpp-arcade2 PreStart Script - libfpp-arcade2.so is missing, rebuilding"
     make
 fi
