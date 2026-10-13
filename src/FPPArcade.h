@@ -14,6 +14,9 @@ public:
     
     virtual void button(const std::string &button) {}
     virtual void axis(const std::string &axis, int value, const std::string &joystickName = "");
+    // The button event an axis movement stands for ("" when none), with the
+    // controller name appended as "|name" when there is one.
+    std::string axisToButton(const std::string &axis, int value, const std::string &joystickName = "");
 
     
     virtual bool isRunning();

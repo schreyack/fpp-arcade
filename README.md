@@ -17,6 +17,19 @@ the games.
 | **Breakout** | Directional "Pressed"/"Released" events. |
 | **Pacman** | The four directional "Pressed" events. A second controller can drive a ghost. |
 
+## Menu
+
+Any controller press while nothing is running opens a menu on the game model:
+
+1. **PLAY or DANCE** - Up/Down to move, Start or Fire to pick, Select to go back.
+2. **PLAY** lists the model's games; **DANCE** lists every playlist named `Dance - <song>`.
+
+A picked game starts at once and only the D-pad reaches it until it ends;
+a game nobody touches for 30 seconds is ended. A picked song is inserted with
+"Insert Playlist Immediate", so a running show pauses, the song plays, and the
+show resumes where it was. Every press is ignored until the song is over. The
+menu closes itself after 20 seconds without input.
+
 ## Installation
 
 Install from **Content Setup → Plugins** in the FPP web UI, then restart FPPD.

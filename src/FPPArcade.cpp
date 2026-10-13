@@ -27,12 +27,16 @@ extern "C" {
 #include <cmath>
 #include <fcntl.h>
 #include <mutex>
+#include <algorithm>
+#include <chrono>
+#include <filesystem>
 
 #include "FPPArcade.h"
 
 #include "commands/Commands.h"
 #include "fpphttp.h"
 #include "FileMonitor.h"
+#include "Timers.h"
 #include "common.h"
 #include "settings.h"
 #include "Plugin.h"
@@ -46,6 +50,8 @@ extern "C" {
 #include "FPPSnake.h"
 #include "FPPBreakout.h"
 #include "FPPPacman.h"
+#include "FPPArcadeMenu.h"
+#include "Player.h"
 
 
 static std::vector<std::string> BUTTONS({
@@ -205,6 +211,12 @@ void FPPArcadeGame::stop() {
 }
 //default behavior will map the axis directions to button presses
 void FPPArcadeGame::axis(const std::string &axis, int value, const std::string &joystickName) {
+    std::string btn = axisToButton(axis, value, joystickName);
+    if (btn != "") {
+        button(btn);
+    }
+}
+std::string FPPArcadeGame::axisToButton(const std::string &axis, int value, const std::string &joystickName) {
     std::string btn = "";
     if (axis == AXIS[2]) { // DOWN->UP
         if (value == 0 && lastValues[0] < 0) {
@@ -243,12 +255,10 @@ void FPPArcadeGame::axis(const std::string &axis, int value, const std::string &
         }
         lastValues[1] = value;
     }
-    if (btn != "") {
-        if (joystickName != "") {
-            btn += "|" + joystickName;
-        }
-        button(btn);
+    if (btn != "" && joystickName != "") {
+        btn += "|" + joystickName;
     }
+    return btn;
 }
 
 
@@ -294,7 +304,26 @@ static const std::map<uint8_t, std::vector<uint8_t>> LETTERS = {
     {'8', {1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1}},
     {'9', {1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1}},
 
-    {':', {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0}}
+    {':', {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0}},
+
+    {'B', {1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0}},
+    {'C', {1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1}},
+    {'D', {1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0}},
+    {'F', {1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0}},
+    {'H', {1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1}},
+    {'J', {0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1}},
+    {'K', {1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1}},
+    {'L', {1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1}},
+    {'P', {1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0}},
+    {'Q', {1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1}},
+    {'S', {1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1}},
+    {'T', {1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0}},
+    {'X', {1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1}},
+    {'Z', {1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1}},
+    {'>', {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0}},
+    {'-', {0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0}},
+    {'!', {0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0}},
+    {' ', {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
 };
 
 class Letter {
@@ -304,6 +333,9 @@ public:
     }
     
     uint8_t get(int x, int y) {
+        if (data.empty()) {
+            return 0;  // a character the font does not have draws as a blank
+        }
         return data[y * 3 + x];
     }
     void set(int x, int y, uint8_t d) {
@@ -446,6 +478,7 @@ public:
     }
 
     virtual std::function<bool()> shutdown() override {
+        Timers::INSTANCE.stopPeriodicTimer("ArcadeMenuTick");
         FileMonitor::INSTANCE.RemoveFile(name, FPP_DIR_CONFIG("/plugin.fpp-arcade.json"));
         FileMonitor::INSTANCE.RemoveFile(name, FPP_DIR_CONFIG("/joysticks.json"));
 #ifdef USE_SDL_CONTROLLERS
@@ -480,6 +513,7 @@ public:
     }
 
     virtual ~FPPArcadePlugin() {
+        Timers::INSTANCE.stopPeriodicTimer("ArcadeMenuTick");
 #ifdef USE_SDL_CONTROLLERS
         // Belt and braces if teardown never went through shutdown().
         Timers::INSTANCE.stopPeriodicTimer("ArcadeSDLEventPump");
@@ -513,21 +547,185 @@ public:
     }
     
 
-    void handleButton(std::list<FPPArcadeGame *> &games, const std::string &button, const std::vector<std::string> &args) {
-        if (button == "Start - Pressed" || button == "Select - Pressed") {
-            if (games.front()->isRunning()) {
-                games.front()->stop();
+    // ---- Menu, game and dance routing
+    //
+    // A model is in one of four modes, worked out from what is on it rather
+    // than stored: a dance song playing (every input is ignored until it
+    // ends), the menu showing, a game running (only the D-pad reaches it), or
+    // idle (any press opens the menu).
+    enum class Mode { Idle, Menu, Game, Dance };
+
+    static constexpr int GAME_IDLE_SECONDS = 30;
+    static constexpr int DANCE_GRACE_SECONDS = 5;
+    static constexpr int DANCE_MAX_SECONDS = 20 * 60;
+
+    Mode modeFor(const std::string &model) {
+        if (!danceLock.empty()) {
+            return Mode::Dance;
+        }
+        PixelOverlayModel *m = PixelOverlayManager::INSTANCE.getModel(model);
+        RunningEffect *e = m ? m->getRunningEffect() : nullptr;
+        if (dynamic_cast<FPPArcadeMenu*>(e)) {
+            return Mode::Menu;
+        }
+        if (dynamic_cast<FPPArcadeGameEffect*>(e)) {
+            return Mode::Game;
+        }
+        return Mode::Idle;
+    }
+
+    // "Up" for "Up - Pressed|Controller - 2"; "" for anything but a press.
+    static std::string pressedName(const std::string &button) {
+        std::string b = button.substr(0, button.find('|'));
+        const std::string suffix = " - Pressed";
+        if (b.size() > suffix.size() && b.compare(b.size() - suffix.size(), suffix.size(), suffix) == 0) {
+            return b.substr(0, b.size() - suffix.size());
+        }
+        return "";
+    }
+    static bool isDirection(const std::string &button) {
+        for (const char *d : { "Up", "Down", "Left", "Right" }) {
+            if (button.rfind(d, 0) == 0) {
+                return true;
             }
         }
-        if (button == "Start - Released" || button == "Select - Released") {
+        return false;
+    }
+
+    // One input for a model's games: a button event, or (axis set) a raw
+    // axis movement from a controller.
+    void routeInput(const std::string &model, std::list<FPPArcadeGame *> &list, const std::string &button,
+                    const std::string &axis = "", int value = 0, const std::string &joystickName = "") {
+        FPPArcadeGame *game = list.front();
+        Mode mode = modeFor(model);
+        if (mode == Mode::Dance) {
             return;
         }
-        if (button == "Select - Pressed") {
-            FPPArcadeGame *g = games.front();
-            games.pop_front();
-            games.push_back(g);
-        } else {
-            games.front()->button(button);
+        if (mode == Mode::Game) {
+            // Only the D-pad plays; Start, Select and the colored buttons
+            // cannot pause, switch or end a game.
+            if (axis != "") {
+                game->axis(axis, value, joystickName);
+            } else if (isDirection(button)) {
+                game->button(button);
+            } else {
+                return;
+            }
+            lastGameInput[model] = std::chrono::steady_clock::now();
+            return;
+        }
+        std::string press = pressedName(axis != "" ? game->axisToButton(axis, value, joystickName) : button);
+        if (press.empty()) {
+            return;
+        }
+        PixelOverlayModel *m = PixelOverlayManager::INSTANCE.getModel(model);
+        if (m == nullptr) {
+            return;
+        }
+        if (mode == Mode::Idle) {
+            openMenu(m, list);
+            return;
+        }
+        FPPArcadeMenu *menu = dynamic_cast<FPPArcadeMenu*>(m->getRunningEffect());
+        if (menu) {
+            if (auto item = menu->press(press)) {
+                launch(model, list, *item);
+            }
+        }
+    }
+
+    void openMenu(PixelOverlayModel *m, std::list<FPPArcadeGame *> &list) {
+        std::vector<FPPArcadeGame *> sorted(list.begin(), list.end());
+        std::sort(sorted.begin(), sorted.end(),
+                  [](FPPArcadeGame *a, FPPArcadeGame *b) { return a->getIdx() < b->getIdx(); });
+        std::vector<FPPArcadeMenu::Item> gameItems;
+        for (auto *g : sorted) {
+            FPPArcadeMenu::Item item;
+            item.label = toUpperCopy(g->getName());
+            item.game = g->getIdx();
+            gameItems.push_back(item);
+        }
+        m->setState(PixelOverlayState(PixelOverlayState::PixelState::Enabled));
+        m->setRunningEffect(new FPPArcadeMenu(m, gameItems, danceSongs()), 50);
+    }
+
+    // The songs on the DANCE screen: every playlist named "Dance - <song>".
+    static std::vector<FPPArcadeMenu::Item> danceSongs() {
+        const std::string prefix = "Dance - ";
+        std::vector<FPPArcadeMenu::Item> songs;
+        std::error_code ec;
+        for (const auto &f : std::filesystem::directory_iterator(FPP_DIR_PLAYLIST(""), ec)) {
+            std::string file = f.path().filename().string();
+            if (file.rfind(prefix, 0) == 0 && f.path().extension() == ".json") {
+                FPPArcadeMenu::Item item;
+                item.playlist = f.path().stem().string();
+                item.label = toUpperCopy(item.playlist.substr(prefix.size()));
+                songs.push_back(item);
+            }
+        }
+        std::sort(songs.begin(), songs.end(),
+                  [](const FPPArcadeMenu::Item &a, const FPPArcadeMenu::Item &b) { return a.label < b.label; });
+        return songs;
+    }
+    static std::string toUpperCopy(std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
+        return s;
+    }
+
+    void launch(const std::string &model, std::list<FPPArcadeGame *> &list, const FPPArcadeMenu::Item &item) {
+        if (!item.playlist.empty()) {
+            // Pauses whatever show is playing, plays the song, then resumes
+            // the show where it was paused; buttons stay locked until then.
+            LogInfo(VB_PLUGIN, "Arcade: dancing to '%s'\n", item.playlist.c_str());
+            danceLock = item.playlist;
+            danceStart = std::chrono::steady_clock::now();
+            Json::Value cmd;
+            cmd["command"] = "Insert Playlist Immediate";
+            cmd["args"].append(item.playlist);
+            cmd["args"].append("0");
+            cmd["args"].append("0");
+            cmd["args"].append("false");
+            CommandManager::INSTANCE.run(cmd);
+            return;
+        }
+        for (size_t x = 0; x < list.size() && list.front()->getIdx() != item.game; x++) {
+            list.push_back(list.front());
+            list.pop_front();
+        }
+        LogInfo(VB_PLUGIN, "Arcade: starting %s on %s\n", list.front()->getName().c_str(), model.c_str());
+        lastGameInput[model] = std::chrono::steady_clock::now();
+        // The game replaces the menu on the model as it starts.
+        list.front()->button("Start - Pressed");
+    }
+
+    // Once a second, on the main loop: unlock the buttons once the dance
+    // song is over, and end any game nobody has touched for a while.
+    void tick() {
+        auto now = std::chrono::steady_clock::now();
+        if (!danceLock.empty()) {
+            auto age = now - danceStart;
+            bool playing = Player::INSTANCE.IsPlaying() && Player::INSTANCE.GetPlaylistName() == danceLock;
+            if ((age > std::chrono::seconds(DANCE_GRACE_SECONDS) && !playing)
+                || age > std::chrono::seconds(DANCE_MAX_SECONDS)) {
+                LogInfo(VB_PLUGIN, "Arcade: '%s' finished, controllers unlocked\n", danceLock.c_str());
+                danceLock.clear();
+            }
+        }
+        for (auto &a : games) {
+            if (!a.second.empty() && modeFor(a.first) == Mode::Game
+                && now - lastGameInput[a.first] > std::chrono::seconds(GAME_IDLE_SECONDS)) {
+                LogInfo(VB_PLUGIN, "Arcade: nobody playing on %s, ending the game\n", a.first.c_str());
+                a.second.front()->stop();
+            }
+        }
+    }
+
+    template<class F>
+    void forTargets(const std::string &model, F f) {
+        for (auto &a : games) {
+            if (!a.second.empty() && (model == "" || model == a.first)) {
+                f(a.first, a.second);
+            }
         }
     }
     std::unique_ptr<Command::Result>  selectGame(const std::vector<std::string> &args) {
@@ -556,34 +754,17 @@ public:
         const std::string model = args.size() > 1 ? args[1] : "";
         int value = args.size() > 2 ? std::atoi(args[2].c_str()) : 0;
         const std::string joystickName = args.size() > 3 ? args[3] : "";
-
-        if (model != "") {
-            if (!games[model].empty()) {
-                games[model].front()->axis(axis, value, joystickName);
-            }
-        } else {
-            for (auto &a : games) {
-                if (!a.second.empty()) {
-                    a.second.front()->axis(axis, value, joystickName);
-                }
-            }
-        }
+        forTargets(model, [&](const std::string &name, std::list<FPPArcadeGame *> &list) {
+            routeInput(name, list, "", axis, value, joystickName);
+        });
         return std::make_unique<Command::Result>("FPP Arcade Axis Processed");
     }
     virtual std::unique_ptr<Command::Result> runCommand(const std::vector<std::string> &args) {
         const std::string button = args[0];
         const std::string model = args.size() > 1 ? args[1] : "";
-        if (model != "") {
-            if (!games[model].empty()) {
-                handleButton(games[model], button, args);
-            }
-        } else {
-            for (auto &a : games) {
-                if (!a.second.empty()) {
-                    handleButton(a.second, button, args);
-                }
-            }
-        }
+        forTargets(model, [&](const std::string &name, std::list<FPPArcadeGame *> &list) {
+            routeInput(name, list, button);
+        });
         return std::make_unique<Command::Result>("FPP Arcade Button Processed");
     }
     
@@ -736,6 +917,7 @@ public:
         addOwnedCommand(new FPPArcadeCommand(this));
         addOwnedCommand(new FPPArcadeAxisCommand(this));
         addOwnedCommand(new FPPArcadeSelectGameCommand(this));
+        Timers::INSTANCE.addPeriodicTimer("ArcadeMenuTick", 1000, [this]() { tick(); });
 
 #ifdef USE_SDL_CONTROLLERS
         SDL_Init(SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS);
@@ -905,6 +1087,9 @@ public:
     std::list<Joystick> joysticks;
     std::mutex joysticksLock;
     std::map<std::string, Json::Value> events;
+    std::string danceLock;  // the dance playlist playing, "" when none
+    std::chrono::steady_clock::time_point danceStart;
+    std::map<std::string, std::chrono::steady_clock::time_point> lastGameInput;
     std::vector<Command *> myCommands;
 };
 
