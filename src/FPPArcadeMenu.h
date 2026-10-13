@@ -33,6 +33,8 @@ public:
     // Feed one press ("Up", "Down", "Start", "Fire", "Select"). Returns the
     // item picked, if this press picked one; the menu then closes itself.
     std::optional<Item> press(const std::string &button);
+    // Close at the next update, picking nothing.
+    void cancel() { closing = true; }
 
 private:
     enum Screen { TOP, GAMES, SONGS, READY };

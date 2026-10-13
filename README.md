@@ -30,6 +30,10 @@ a game nobody touches for 30 seconds is ended. A picked song is inserted with
 show resumes where it was. Every press is ignored until the song is over. The
 menu closes itself after 20 seconds without input.
 
+**Cancel:** hold the left shoulder button and press Start to close the menu,
+end the game, or stop the dance song (a show it interrupted resumes). Map the
+shoulder button to "Left Shoulder" on the Joysticks page.
+
 ## Installation
 
 Install from **Content Setup → Plugins** in the FPP web UI, then restart FPPD.

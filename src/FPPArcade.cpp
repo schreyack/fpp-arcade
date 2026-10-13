@@ -29,6 +29,7 @@ extern "C" {
 #include <mutex>
 #include <algorithm>
 #include <chrono>
+#include <optional>
 #include <filesystem>
 
 #include "FPPArcade.h"
@@ -64,6 +65,7 @@ static std::vector<std::string> BUTTONS({
     "Down/Left - Pressed", "Down/Left - Released",
     "Down/Right - Pressed", "Down/Right - Released",
     "Fire - Pressed", "Fire - Released",
+    "Left Shoulder - Pressed", "Left Shoulder - Released",
     "Select - Pressed", "Select - Released",
     "Start - Pressed", "Start - Released",
 });
@@ -729,6 +731,45 @@ public:
         }
     }
 
+    // The secret cancel: hold the left shoulder button and press Start.
+    bool cancelCombo(const std::string &button) {
+        std::string b = button.substr(0, button.find('|'));
+        auto now = std::chrono::steady_clock::now();
+        if (b == "Left Shoulder - Pressed") {
+            leftShoulderDown = now;
+        } else if (b == "Left Shoulder - Released") {
+            leftShoulderDown.reset();
+        } else if (b == "Start - Pressed" && leftShoulderDown
+                   && now - *leftShoulderDown < std::chrono::seconds(30)) {
+            return true;
+        }
+        return false;
+    }
+
+    // Close the menu, end the game, or stop the dance song - whatever is on.
+    // A song is stopped only while it is the current playlist, so the show it
+    // interrupted resumes and is never stopped itself.
+    void cancelAll() {
+        LogInfo(VB_PLUGIN, "Arcade: cancel pressed\n");
+        if (!danceLock.empty()) {
+            if (Player::INSTANCE.GetPlaylistName() == danceLock) {
+                Json::Value cmd;
+                cmd["command"] = "Stop Now";
+                CommandManager::INSTANCE.run(cmd);
+            }
+            danceLock.clear();
+        }
+        for (auto &a : games) {
+            PixelOverlayModel *m = PixelOverlayManager::INSTANCE.getModel(a.first);
+            RunningEffect *e = m ? m->getRunningEffect() : nullptr;
+            if (auto *menu = dynamic_cast<FPPArcadeMenu*>(e)) {
+                menu->cancel();
+            } else if (dynamic_cast<FPPArcadeGameEffect*>(e) && !a.second.empty()) {
+                a.second.front()->stop();
+            }
+        }
+    }
+
     template<class F>
     void forTargets(const std::string &model, F f) {
         for (auto &a : games) {
@@ -771,6 +812,10 @@ public:
     virtual std::unique_ptr<Command::Result> runCommand(const std::vector<std::string> &args) {
         const std::string button = args[0];
         const std::string model = args.size() > 1 ? args[1] : "";
+        if (cancelCombo(button)) {
+            cancelAll();
+            return std::make_unique<Command::Result>("FPP Arcade Cancelled");
+        }
         forTargets(model, [&](const std::string &name, std::list<FPPArcadeGame *> &list) {
             routeInput(name, list, button);
         });
@@ -1097,6 +1142,7 @@ public:
     std::mutex joysticksLock;
     std::map<std::string, Json::Value> events;
     std::string danceLock;  // the dance playlist playing, "" when none
+    std::optional<std::chrono::steady_clock::time_point> leftShoulderDown;
     std::chrono::steady_clock::time_point danceStart;
     std::map<std::string, std::chrono::steady_clock::time_point> lastGameInput;
     std::vector<Command *> myCommands;
