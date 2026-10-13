@@ -372,23 +372,21 @@ public:
         };
         FileMonitor::INSTANCE.AddFile(name, FPP_DIR_CONFIG("/plugin.fpp-arcade.json"), reload);
 
-        int idx = 0;
-        if (FileExists(FPP_DIR_CONFIG("/plugin.fpp-arcade.json"))) {
-            Json::Value root;
-            if (LoadJsonFromFile(FPP_DIR_CONFIG("/plugin.fpp-arcade.json"), root)
-                && root.isMember("games")) {
-                for (int x = 0; x < root["games"].size(); x++) {
-                    if (root["games"][x]["enabled"].asBool()) {
-                        std::string model = root["games"][x]["model"].asString();
-                        games[model].push_back(createGame(root["games"][x]));
-                        if (games[model].back() != nullptr) {
-                            games[model].back()->setIdx(++idx);
-                        }
-                    }
-                }
-            }
-        }
-        
+        // Same for the controller mappings saved by the Joysticks page, so a
+        // newly mapped button works as soon as the page is saved.
+        std::function<void()> reloadJoysticks = [this]() {
+            LogInfo(VB_PLUGIN, "Arcade: joystick mappings changed, reloading\n");
+            loadJoystickMappings();
+        };
+        FileMonitor::INSTANCE.AddFile(name, FPP_DIR_CONFIG("/joysticks.json"), reloadJoysticks);
+
+        loadGames();
+        loadJoystickMappings();
+    }
+    // Rebuild the button/axis -> command map from joysticks.json. Runs on the
+    // main loop, which is also where controller events are processed.
+    void loadJoystickMappings() {
+        events.clear();
         if (FileExists(FPP_DIR_CONFIG("/joysticks.json"))) {
             Json::Value root;
             if (LoadJsonFromFile(FPP_DIR_CONFIG("/joysticks.json"), root)) {
@@ -449,6 +447,7 @@ public:
 
     virtual std::function<bool()> shutdown() override {
         FileMonitor::INSTANCE.RemoveFile(name, FPP_DIR_CONFIG("/plugin.fpp-arcade.json"));
+        FileMonitor::INSTANCE.RemoveFile(name, FPP_DIR_CONFIG("/joysticks.json"));
 #ifdef USE_SDL_CONTROLLERS
         // Stop pumping SDL, then take back the event filter. SDL keeps
         // controller_event_filter - a function pointer into this .so - in a
