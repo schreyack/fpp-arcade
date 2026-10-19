@@ -38,7 +38,12 @@ var arcadeConfig = <? echo json_encode($pluginJson, JSON_PRETTY_PRINT); ?>;
 function GetTetrisOptions() {
     var html = "Rows: <input type='number' value='20' min='1' max='50' class='option1' data-optionname='Rows'/>&nbsp;";
     html += "Colums: <input type='number' value='11' min='1' max='30' class='option2' data-optionname='Colums'/>&nbsp;";
-    html += "Pixel Scaling: <input type='number' value='1' min='1' max='20' class='option3' data-optionname='Pixel Scaling'/>";
+    html += "Pixel Scaling: <input type='number' value='1' min='1' max='20' class='option3' data-optionname='Pixel Scaling'/>&nbsp;";
+    html += "Pieces fall: <select class='option4' data-optionname='Falls'>";
+    html += "<option value='Down' selected>Top to bottom</option>";
+    html += "<option value='Left'>Right to left</option>";
+    html += "<option value='Right'>Left to right</option>";
+    html += "</select>";
     return html;
 }
 function GetPongOptions() {

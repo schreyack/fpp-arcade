@@ -3,6 +3,7 @@
 #include "FPPTetris.h"
 #include "FPPArcadeSound.h"
 #include <array>
+#include <map>
 #include <random>
 
 #include "overlays/PixelOverlay.h"
@@ -168,7 +169,11 @@ private:
 
 class TetrisEffect : public FPPArcadeGameEffect {
 public:
-    TetrisEffect(int r, int c, int offx, int offy, int sc, PixelOverlayModel *m) : FPPArcadeGameEffect(m), rows(r), cols(c) {
+    // Which way the pieces fall on the model. The board is always worked in
+    // rows (the way pieces fall) and columns; only drawing and the D-pad turn.
+    enum Fall { DOWN = 0, LEFT = 1, RIGHT = 2 };
+
+    TetrisEffect(int r, int c, int offx, int offy, int sc, int f, PixelOverlayModel *m) : FPPArcadeGameEffect(m), rows(r), cols(c), fall(f) {
         table.resize(r);
         for (int x = 0; x < r; x++) {
             table[x].resize(c);
@@ -268,46 +273,84 @@ public:
         setTempo(BASS, speed);
     }
     
-    void CopyToModel() {
-        model->clearOverlayBuffer();
-        if (offsetX) {
-            for (int y = 0; y < rows*scale; y++) {
-                model->setOverlayPixelValue(offsetX-1, offsetY + y, 128, 128, 128);
-                model->setOverlayPixelValue(offsetX+cols*scale, offsetY + y, 128, 128, 128);
+    // Draw one board cell, turned for the way pieces fall. Both sideways
+    // turns are rotations, so pieces never come out mirrored.
+    void cell(int row, int col, uint32_t color) {
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = (color) & 0xFF;
+        if (fall == LEFT) {
+            outputPixel(rows - 1 - row, col, r, g, b);
+        } else if (fall == RIGHT) {
+            outputPixel(row, cols - 1 - col, r, g, b);
+        } else {
+            outputPixel(col, row, r, g, b);
+        }
+    }
+
+    void drawBorders() {
+        // Board size on the model, in pixels.
+        int w = (fall == DOWN ? cols : rows) * scale;
+        int h = (fall == DOWN ? rows : cols) * scale;
+        auto px = [this](int x, int y) { model->setOverlayPixelValue(x, y, 128, 128, 128); };
+        if (fall == DOWN) {
+            if (offsetX) {
+                for (int y = 0; y < h; y++) {
+                    px(offsetX - 1, offsetY + y);
+                    px(offsetX + w, offsetY + y);
+                }
+                for (int x = -1; x <= w; x++) {
+                    px(offsetX + x, offsetY + h);
+                    if (offsetY) {
+                        px(offsetX + x, offsetY - 1);
+                    }
+                }
             }
-            for (int x = -1; x <= cols*scale; x++) {
-                model->setOverlayPixelValue(offsetX+x, offsetY + rows*scale, 128, 128, 128);
-                if (offsetY) {
-                    model->setOverlayPixelValue(offsetX+x, offsetY - 1, 128, 128, 128);
+        } else if (offsetY) {
+            // Sideways: the long sides are the walls, the floor is at the
+            // end the pieces fall toward.
+            for (int x = -1; x <= w; x++) {
+                px(offsetX + x, offsetY - 1);
+                px(offsetX + x, offsetY + h);
+            }
+            if (offsetX) {
+                int floorX = fall == LEFT ? offsetX - 1 : offsetX + w;
+                for (int y = -1; y <= h; y++) {
+                    px(floorX, offsetY + y);
                 }
             }
         }
+    }
+
+    void CopyToModel() {
+        model->clearOverlayBuffer();
+        drawBorders();
         for(int i = 0; i < rows; i++) {
             for(int j = 0; j < cols; j++) {
                 if (table[i][j]) {
-                    int r = (table[i][j] >> 16) & 0xFF;
-                    int g = (table[i][j] >> 8) & 0xFF;
-                    int b = (table[i][j]) & 0xFF;
-                    outputPixel(j, i, r, g, b);
+                    cell(i, j, table[i][j]);
                 }
             }
         }
         if (currentShape) {
             uint32_t color = currentShape->getColor();
-            int r = (color >> 16) & 0xFF;
-            int g = (color >> 8) & 0xFF;
-            int b = (color) & 0xFF;
-
             for (int i = 0; i < currentShape->getWidth(); i++) {
                 for (int j = 0; j < currentShape->getWidth(); j++) {
                     if (currentShape->get(i, j)) {
-                        outputPixel(currentShape->col+j, currentShape->row+i, r, g, b);
+                        cell(currentShape->row+i, currentShape->col+j, color);
                     }
                 }
             }
 
         }
         model->flushOverlayBuffer();
+    }
+
+    // Text centered across the whole model, whatever the board's offset.
+    void centered(const std::string &text, int y, int scl) {
+        int w = model->getWidth();
+        int x = (w - ((int)text.size() * 4 - 1) * scl) / 2;
+        outputString(text, (x - offsetX) / scl, (y - offsetY) / scl, 255, 255, 255, scl);
     }
     
     virtual int32_t update() override {
@@ -316,27 +359,13 @@ public:
                 delete currentShape;
                 currentShape = nullptr;
                 model->clearOverlayBuffer();
-                outputLetter(0, 0, 'G');
-                outputLetter(4, 0, 'A');
-                outputLetter(8, 0, 'M');
-                outputLetter(12, 0, 'E');
-                outputLetter(0, 6, 'O');
-                outputLetter(4, 6, 'V');
-                outputLetter(8, 6, 'E');
-                outputLetter(12, 6, 'R');
-
-                char buf[20];
-                snprintf(buf, sizeof(buf), "%d", score);
-                int x = 4;
-                if (score < 10) {
-                    x = 6;
-                }
-                char *b2 = buf;
-                while (*b2) {
-                    outputLetter(x, 13, *b2);
-                    x += 4;
-                    b2++;
-                }
+                // GAME / OVER big when the model has room, then the lines
+                // cleared under them.
+                int h = model->getHeight();
+                int big = h >= 28 ? 2 : 1;
+                centered("GAME", 0, big);
+                centered("OVER", 6 * big, big);
+                centered("LINES " + std::to_string(score), std::min(h - 5, 12 * big + 1), 1);
 
                 model->flushOverlayBuffer();
                 return 3000;
@@ -351,18 +380,37 @@ public:
             WaitingUntilOutput = true;
             return -1;
         }
-        button("Down - Pressed");
+        step("Down - Pressed");
         return timer;
     }
     
+    // A D-pad press, turned to the board: sideways, the direction pieces
+    // fall drops faster, the opposite one rotates, and the other two slide
+    // the piece across.
     void button(const std::string &butt) {
-        std::string button = butt;
-        std::string joystickName = "";
-        size_t pos = butt.find('|');
-        if (pos != std::string::npos) {
-            button = butt.substr(0, pos);
-            joystickName = butt.substr(pos+1);
+        std::string button = butt.substr(0, butt.find('|'));
+        if (fall != DOWN) {
+            static const std::map<std::string, std::string> LEFT_TURN = {
+                { "Left - Pressed", "Down - Pressed" }, { "Right - Pressed", "Up - Pressed" },
+                { "Up - Pressed", "Left - Pressed" }, { "Down - Pressed", "Right - Pressed" },
+            };
+            static const std::map<std::string, std::string> RIGHT_TURN = {
+                { "Right - Pressed", "Down - Pressed" }, { "Left - Pressed", "Up - Pressed" },
+                { "Down - Pressed", "Left - Pressed" }, { "Up - Pressed", "Right - Pressed" },
+            };
+            const auto &turn = fall == LEFT ? LEFT_TURN : RIGHT_TURN;
+            auto it = turn.find(button);
+            if (it == turn.end()) {
+                return;
+            }
+            button = it->second;
         }
+        step(button);
+    }
+
+    // One move on the board, in board terms: Left/Right slide, Up rotates,
+    // Down drops a row.
+    void step(const std::string &button) {
         if (!GameOn) {
             return;
         }
@@ -404,6 +452,7 @@ public:
 
     int rows = 20;
     int cols = 11;
+    int fall = DOWN;
     std::vector<std::vector<uint32_t>> table;
     int score = 0;
     bool GameOn = true;
@@ -433,15 +482,20 @@ void FPPTetris::button(const std::string &button) {
             int pixelScaling = std::stoi(findOption("Pixel Scaling", "1"));
             int rows = std::stoi(findOption("Rows", "20"));
             int cols = std::stoi(findOption("Colums", "11"));
-            int offsetX = (m->getWidth() - (cols * pixelScaling)) / 2;
+            std::string direction = findOption("Falls", "Down");
+            int fall = direction == "Left" ? 1 : direction == "Right" ? 2 : 0;
+            // Board size on the model: sideways, rows run across it.
+            int boardW = (fall ? rows : cols) * pixelScaling;
+            int boardH = (fall ? cols : rows) * pixelScaling;
+            int offsetX = (m->getWidth() - boardW) / 2;
             if (offsetX < 0) {
                 offsetX = 0;
             }
-            int offsetY = (m->getHeight() - (rows * pixelScaling)) / 2;
+            int offsetY = (m->getHeight() - boardH) / 2;
             if (offsetY < 0) {
                 offsetY = 0;
             }
-            effect = new TetrisEffect(rows, cols, offsetX, offsetY, pixelScaling, m);
+            effect = new TetrisEffect(rows, cols, offsetX, offsetY, pixelScaling, fall, m);
             effect->button(button);
             m->setRunningEffect(effect, 50);
         } else {
