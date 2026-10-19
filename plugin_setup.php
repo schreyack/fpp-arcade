@@ -151,7 +151,11 @@ function SaveGame(row) {
 }
 
 function SaveArcade() {
-    var arcadeConfig = { "games" : [] };
+    var arcadeConfig = {
+        "sounds": $("#arcadeSounds").is(":checked"),
+        "soundVolume": parseInt($("#arcadeSoundVolume").val()),
+        "games" : []
+    };
     var i = 0;
     $("#arcadeTableBody > tr").each(function() {
         arcadeConfig["games"][i++] = SaveGame(this);
@@ -221,6 +225,15 @@ $(document).ready(function() {
 </tr>
 </table>
 
+<div>
+    <label><input type="checkbox" id="arcadeSounds"> Game sounds</label>
+    &nbsp;&nbsp;
+    Game sound volume: <input type="range" id="arcadeSoundVolume" min="0" max="100" step="5"
+        oninput="$('#arcadeSoundVolumeValue').text(this.value + '%');">
+    <span id="arcadeSoundVolumeValue"></span>
+    <br><small>Only changes how loud the game sounds are next to the show. The box's own volume is left alone.</small>
+</div>
+
 <div class='fppTableWrapper fppTableWrapperAsTable'>
 <div class='fppTableContents'>
 <table class="fppTable" id="arcadeTable"  width='100%'>
@@ -249,6 +262,11 @@ $.ajax({
 });
                   
 
+
+$("#arcadeSounds").prop('checked', arcadeConfig["sounds"] !== false);
+var soundVolume = arcadeConfig["soundVolume"] != null ? arcadeConfig["soundVolume"] : 100;
+$("#arcadeSoundVolume").val(soundVolume);
+$("#arcadeSoundVolumeValue").text(soundVolume + '%');
 
 $.each(arcadeConfig["games"], function( key, val ) {
     var row = AddArcade();

@@ -1,6 +1,7 @@
 #include <fpp-pch.h>
 
 #include "FPPTetris.h"
+#include "FPPArcadeSound.h"
 #include <array>
 #include <random>
 
@@ -13,6 +14,44 @@ FPPTetris::FPPTetris(Json::Value &config) : FPPArcadeGame(config) {
     std::srand(time(NULL));
 }
 FPPTetris::~FPPTetris() {
+}
+
+using namespace ArcadeSound;
+
+// Korobeiniki, the Russian folk song the Game Boy version made the Tetris
+// theme, with a bass line under it. Both are eight bars, so they loop together.
+static const char *THEME =
+    "E5:4 B4:8 C5:8 D5:4 C5:8 B4:8 A4:4 A4:8 C5:8 E5:4 D5:8 C5:8 "
+    "B4:4. C5:8 D5:4 E5:4 C5:4 A4:4 A4:4 -:4 "
+    "D5:4. F5:8 A5:4 G5:8 F5:8 E5:4. C5:8 E5:4 D5:8 C5:8 "
+    "B4:4 B4:8 C5:8 D5:4 E5:4 C5:4 A4:4 A4:4 -:4";
+static std::string bassLine() {
+    std::string out;
+    for (const char *root : { "E2", "A2", "G#2", "A2", "D2", "C2", "E2", "A2" }) {
+        std::string low = std::string(root);
+        std::string high = low.substr(0, low.size() - 1) + "3";
+        for (int x = 0; x < 4; x++) {
+            out += low + ":8 " + high + ":8 ";
+        }
+    }
+    return out;
+}
+static void startTheme() {
+    Sound melody;
+    melody.wave = Wave::Pulse;
+    melody.notes = tune(THEME, 150);
+    melody.loop = true;
+    melody.level = 0.8f;
+    Sound bass;
+    bass.wave = Wave::Triangle;
+    bass.notes = tune(bassLine(), 150);
+    bass.loop = true;
+    play(MUSIC, melody);
+    play(BASS, bass);
+}
+static void stopTheme() {
+    stop(MUSIC);
+    stop(BASS);
 }
 
 static std::array<uint32_t, 7> COLORS = {
@@ -139,8 +178,10 @@ public:
         offsetY = offy;
         newShape();
         CopyToModel();
+        startTheme();
     }
     ~TetrisEffect() {
+        stopTheme();
         if (currentShape) {
             delete currentShape;
         }
@@ -159,6 +200,8 @@ public:
         currentShape->row = 0;
         if (!CheckPosition(currentShape)) {
             GameOn = false;
+            stopTheme();
+            play(FX1, Wave::Square, tune("E5:8 C5:8 A4:8 E4:8 C4:8 A3:2", 160));
         }
     }
     bool CheckPosition(Shape *shape) {
@@ -186,7 +229,7 @@ public:
     }
     
     void CheckLines() {
-        int count = 0;
+        int before = score;
         for(int i = 0; i < rows; i++) {
             int sum = 0;
             for(int j = 0; j < cols; j++) {
@@ -211,6 +254,18 @@ public:
         if (timer < 30) {
             timer = 30;
         }
+        int lines = score - before;
+        if (lines >= 4) {
+            play(FX1, Wave::Square, tune("C5:16 E5:16 G5:16 C6:16 E6:16 G6:16 C7:8", 200));
+        } else if (lines > 0) {
+            play(FX1, Wave::Square, { slide(523, 1046, 90 + 60 * lines) });
+        } else {
+            play(FX2, Wave::Noise, { tone(700, 40) });
+        }
+        // The theme speeds up as the drop does, up to about half again.
+        float speed = 1.0f + 0.6f * (500 - timer) / 470.0f;
+        setTempo(MUSIC, speed);
+        setTempo(BASS, speed);
     }
     
     void CopyToModel() {
@@ -316,16 +371,19 @@ public:
             tmp.col--;  //move left
             if (CheckPosition(&tmp)) {
                 currentShape->col--;
+                play(FX2, Wave::Pulse, { tone(1200, 12) }, 0.5f);
             }
         } else if (button == "Right - Pressed") {
             tmp.col++;  //move left
             if (CheckPosition(&tmp)) {
                 currentShape->col++;
+                play(FX2, Wave::Pulse, { tone(1200, 12) }, 0.5f);
             }
         } else if (button == "Up - Pressed") {
             tmp.rotate();
             if (CheckPosition(&tmp)) {
                 currentShape->rotate();
+                play(FX2, Wave::Square, { slide(700, 1000, 30) }, 0.6f);
             }
         } else if (button == "Down - Pressed") {
             tmp.row++;  //move down

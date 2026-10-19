@@ -6,7 +6,7 @@ all: libfpp-arcade2.$(SHLIB_EXT)
 debug: all
 
 CFLAGS+=-I.
-OBJECTS_fpp_arcade_so += src/FPPArcade.o src/FPPTetris.o src/FPPPong.o src/FPPSnake.o src/FPPBreakout.o src/FPPPacman.o src/FPPArcadeMenu.o
+OBJECTS_fpp_arcade_so += src/FPPArcade.o src/FPPTetris.o src/FPPPong.o src/FPPSnake.o src/FPPBreakout.o src/FPPPacman.o src/FPPArcadeMenu.o src/FPPArcadeSound.o
 LIBS_fpp_arcade_so += -L$(SRCDIR) -lfpp -ljsoncpp -ldrogon -ltrantor
 CXXFLAGS_src/FPPArcade.o += -I$(SRCDIR)
 
@@ -14,6 +14,9 @@ CXXFLAGS_src/FPPArcade.o += -I$(SRCDIR)
 # /dev/input/jsN. Linux/Pi use the raw Linux joystick API and don't link SDL.
 ifeq '$(ARCH)' 'OSX'
 LIBS_fpp_arcade_so += -lSDL2
+else
+# Game sounds play through FPP's PipeWire, via its PulseAudio interface.
+LIBS_fpp_arcade_so += -lpulse-simple -lpulse
 endif
 
 

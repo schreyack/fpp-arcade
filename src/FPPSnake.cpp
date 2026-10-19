@@ -1,6 +1,7 @@
 #include <fpp-pch.h>
 
 #include "FPPSnake.h"
+#include "FPPArcadeSound.h"
 #include <array>
 #include <random>
 
@@ -13,6 +14,16 @@ FPPSnake::FPPSnake(Json::Value &config) : FPPArcadeGame(config) {
     std::srand(time(NULL));
 }
 FPPSnake::~FPPSnake() {
+}
+
+using namespace ArcadeSound;
+
+// Old phone style: a quick two-note beep for each bite, and a buzz and a
+// falling tone on a crash.
+static void eatSound() { play(FX1, Wave::Pulse, { tone(1568, 35), tone(2093, 45) }); }
+static void crashSound() {
+    play(FX1, Wave::Noise, { tone(3000, 180) });
+    play(FX2, Wave::Square, { slide(660, 110, 600) });
 }
 
 class SnakeEffect : public FPPArcadeGameEffect {
@@ -128,6 +139,7 @@ public:
         } else {
             food.remove({x, y});
             addFood();
+            eatSound();
         }
         snake.push_front({x, y});
         if (x == 0 || y == 0 || x == (cols-1) || y == (rows-1)) {
@@ -152,6 +164,7 @@ public:
         CopyToModel();
         if (!GameOn) {
             GameOn = false;
+            crashSound();
             outputString("GAME", cols/ 2 - 8, rows/2-9);
             outputString("OVER", cols/ 2 - 8, rows/2-3);
             char buf[25];

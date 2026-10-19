@@ -1,6 +1,7 @@
 #include <fpp-pch.h>
 
 #include "FPPArcadeMenu.h"
+#include "FPPArcadeSound.h"
 
 #include "overlays/PixelOverlay.h"
 #include "overlays/PixelOverlayModel.h"
@@ -8,6 +9,13 @@
 static const int TITLE_R = 255, TITLE_G = 96, TITLE_B = 0;
 static const int PICK_R = 255, PICK_G = 220, PICK_B = 0;
 static const int OTHER_R = 110, OTHER_G = 110, OTHER_B = 110;
+
+using namespace ArcadeSound;
+
+static void moveBlip() { play(FX3, Wave::Pulse, { tone(1320, 25) }, 0.6f); }
+static void pickBlip() { play(FX3, Wave::Square, { tone(988, 40), tone(1319, 70) }, 0.7f); }
+static void backBlip() { play(FX3, Wave::Square, { tone(660, 40), tone(440, 60) }, 0.7f); }
+static void coinSound() { play(FX3, Wave::Square, { tone(988, 70), tone(1319, 260) }, 0.8f); }
 
 FPPArcadeMenu::FPPArcadeMenu(PixelOverlayModel *m, std::vector<Item> g, std::vector<Item> s) :
     FPPArcadeGameEffect(m), games(std::move(g)), songs(std::move(s)),
@@ -34,19 +42,24 @@ std::optional<FPPArcadeMenu::Item> FPPArcadeMenu::press(const std::string &butto
     if (screen == READY) {
         // Any press at all starts the waiting game.
         closing = true;
+        coinSound();
         return ready;
     }
     int count = screen == TOP ? 2 : (int)itemsFor(screen).size();
-    if (button == "Up") {
-        selected = std::max(0, selected - 1);
-    } else if (button == "Down") {
-        selected = std::min(count - 1, selected + 1);
+    if (button == "Up" || button == "Down") {
+        int was = selected;
+        selected = button == "Up" ? std::max(0, selected - 1) : std::min(count - 1, selected + 1);
+        if (selected != was) {
+            moveBlip();
+        }
     } else if (button == "Select") {
         if (screen != TOP && !games.empty() && !songs.empty()) {
             screen = TOP;
             selected = 0;
+            backBlip();
         }
     } else if (button == "Start" || button == "Fire") {
+        pickBlip();
         if (screen == TOP) {
             screen = selected == 0 ? GAMES : SONGS;
             selected = 0;

@@ -52,6 +52,7 @@ extern "C" {
 #include "FPPBreakout.h"
 #include "FPPPacman.h"
 #include "FPPArcadeMenu.h"
+#include "FPPArcadeSound.h"
 #include "Player.h"
 
 
@@ -206,6 +207,7 @@ public:
 };
 
 void FPPArcadeGame::stop() {
+    ArcadeSound::stopAll();
     PixelOverlayModel *m = PixelOverlayManager::INSTANCE.getModel(modelName);
     if (m != nullptr) {
         m->setRunningEffect(new ClearRunningEffect(m), 10);
@@ -464,8 +466,13 @@ public:
         int idx = 0;
         if (FileExists(FPP_DIR_CONFIG("/plugin.fpp-arcade.json"))) {
             Json::Value root;
-            if (LoadJsonFromFile(FPP_DIR_CONFIG("/plugin.fpp-arcade.json"), root)
-                && root.isMember("games")) {
+            if (LoadJsonFromFile(FPP_DIR_CONFIG("/plugin.fpp-arcade.json"), root)) {
+                // Game sounds go to the same PipeWire sink as FPP's media.
+                ArcadeSound::configure(root.get("sounds", true).asBool(),
+                                       root.get("soundVolume", 100).asInt(),
+                                       getSetting("PipeWireSinkName"));
+            }
+            if (root.isMember("games")) {
                 for (int x = 0; x < root["games"].size(); x++) {
                     if (root["games"][x]["enabled"].asBool()) {
                         std::string model = root["games"][x]["model"].asString();
@@ -503,6 +510,9 @@ public:
             delete c;
         }
         myCommands.clear();
+        // The sound thread runs code in this library, so it must be gone
+        // before the library is.
+        ArcadeSound::shutdown();
         // Release the controller handles and joystick descriptors now rather
         // than at destruction, so a reload can reopen them. FPP has already
         // taken the descriptors out of its epoll loop by this point.
@@ -516,6 +526,7 @@ public:
 
     virtual ~FPPArcadePlugin() {
         Timers::INSTANCE.stopPeriodicTimer("ArcadeMenuTick");
+        ArcadeSound::shutdown();
 #ifdef USE_SDL_CONTROLLERS
         // Belt and braces if teardown never went through shutdown().
         Timers::INSTANCE.stopPeriodicTimer("ArcadeSDLEventPump");
@@ -722,12 +733,19 @@ public:
                 danceLock.clear();
             }
         }
+        bool active = false;
         for (auto &a : games) {
-            if (!a.second.empty() && modeFor(a.first) == Mode::Game
+            Mode mode = modeFor(a.first);
+            if (!a.second.empty() && mode == Mode::Game
                 && now - lastGameInput[a.first] > std::chrono::seconds(GAME_IDLE_SECONDS)) {
                 LogInfo(VB_PLUGIN, "Arcade: nobody playing on %s, ending the game\n", a.first.c_str());
                 a.second.front()->stop();
             }
+            active |= mode == Mode::Game || mode == Mode::Menu;
+        }
+        // Sounds belong to a game or the menu; nothing outlives them.
+        if (!active) {
+            ArcadeSound::stopAll();
         }
     }
 
@@ -1159,8 +1177,8 @@ std::unique_ptr<Command::Result> FPPArcadeSelectGameCommand::run(const std::vect
     return plugin->selectGame(args);
 }
 
-// Safe to dlclose() on unload: no threads of its own, no CurlManager requests
-// and no drogon client objects. The routes go through registerPluginApi() and
+// Safe to dlclose() on unload: no CurlManager requests and no drogon client
+// objects, and the one thread of its own (game sound) is joined in shutdown(). The routes go through registerPluginApi() and
 // come back in unregisterApis(); shutdown() stops the SDL pump timer, takes
 // back the SDL event filter (a function pointer into this library that SDL
 // holds globally), withdraws the three commands and releases the controllers

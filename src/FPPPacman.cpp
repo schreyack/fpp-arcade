@@ -1,6 +1,7 @@
 #include <fpp-pch.h>
 
 #include "FPPPacman.h"
+#include "FPPArcadeSound.h"
 #include <vector>
 #include <set>
 #include <random>
@@ -17,6 +18,59 @@ FPPPacman::FPPPacman(Json::Value &config) : FPPArcadeGame(config) {
 
 
 FPPPacman::~FPPPacman() {
+}
+
+using namespace ArcadeSound;
+
+// Sound-alikes of the arcade game's sounds: the start tune, the waka of
+// eating, the siren under play, the power pellet and the death.
+static void startTune() {
+    Sound melody;
+    melody.wave = Wave::Pulse;
+    melody.notes = tune("B4:16 B5:16 F#5:16 D#5:16 B5:32 F#5:16. D#5:8 "
+                        "C5:16 C6:16 G5:16 E5:16 C6:32 G5:16. E5:8 "
+                        "B4:16 B5:16 F#5:16 D#5:16 B5:32 F#5:16. D#5:8 "
+                        "D#5:32 E5:32 F5:16 F5:32 F#5:32 G5:16 G5:32 G#5:32 A5:16 B5:8", 115);
+    Sound bass;
+    bass.wave = Wave::Triangle;
+    bass.notes = tune("B2:8. B3:16 B2:8. B3:16 C3:8. C4:16 C3:8. C4:16 "
+                      "B2:8. B3:16 B2:8. B3:16 F#3:8 G#3:8 A#3:8 B3:8", 115);
+    play(MUSIC, melody);
+    play(BASS, bass);
+}
+static void startSiren() {
+    Sound siren;
+    siren.wave = Wave::Triangle;
+    siren.notes = { slide(380, 620, 210), slide(620, 380, 210) };
+    siren.level = 0.45f;
+    siren.loop = true;
+    play(MUSIC, siren);
+}
+static void powerSound() {
+    std::vector<Note> notes;
+    for (int x = 0; x < 6; x++) {
+        notes.push_back(slide(300, 1000, 70));
+    }
+    play(FX2, Wave::Square, notes, 0.6f);
+}
+static void deathSound() {
+    stop(MUSIC);
+    stop(BASS);
+    std::vector<Note> notes = { rest(300) };
+    for (int x = 0; x < 9; x++) {
+        float top = 950 - x * 75;
+        notes.push_back(slide(top, top - 300, 120));
+    }
+    notes.push_back(rest(80));
+    notes.push_back(slide(120, 700, 90));
+    notes.push_back(rest(40));
+    notes.push_back(slide(120, 700, 90));
+    play(FX1, Wave::Square, notes);
+}
+static void winSound() {
+    stop(MUSIC);
+    stop(BASS);
+    play(FX1, Wave::Pulse, tune("C5:16 E5:16 G5:16 C6:8 G5:16 C6:4", 130));
 }
 
 class PacmanEffect : public FPPArcadeGameEffect {
@@ -50,6 +104,12 @@ public:
     int speedBoostTimer = 0;
     int endTimer = 0;
     std::string endMessage = "";
+    bool waka = false;
+
+    ~PacmanEffect() {
+        stop(MUSIC);
+        stop(BASS);
+    }
 
     void drawRoom(int startX, int startY, int width, int height, int doorWall = -1) {
         int wallThickness = 2;
@@ -124,6 +184,7 @@ public:
     }
 
     PacmanEffect(PixelOverlayModel *m) : FPPArcadeGameEffect(m) {
+        startTune();
         m->getSize(cols, rows);
         cols /= scale; rows /= scale;
         if (cols < 8) cols = 8;
@@ -435,6 +496,11 @@ public:
                 if (pc % 2 != 0) continue; // only even columns
                 if (grid[pr][pc] == 1 && eatenPellets.find({pc, pr}) == eatenPellets.end()) {
                     eatenPellets.insert({pc, pr});
+                    // "Wa" and "ka" take turns, one per bite.
+                    if (!isPlaying(FX1)) {
+                        play(FX1, Wave::Triangle, { waka ? slide(520, 260, 90) : slide(260, 520, 90) });
+                        waka = !waka;
+                    }
                 }
             }
         }
@@ -460,6 +526,7 @@ public:
                 if (pacmanX >= tlx && pacmanX < tlx + 4 && pacmanY >= tly && pacmanY < tly + 4) {
                     it = specialPellets.erase(it);
                     speedBoostTimer = 10; // Speed boost for 10 updates
+                    powerSound();
                 } else {
                     ++it;
                 }
@@ -591,6 +658,10 @@ public:
             CopyToModel();
             return timer;
         }
+        // The siren takes over once the start tune is done.
+        if (!isPlaying(MUSIC)) {
+            startSiren();
+        }
 
         movePacman();
         eatPelletsAtPosition(pacmanX, pacmanY); // Ensure eating even if direction change blocked movement
@@ -602,6 +673,7 @@ public:
                 GameOn = false;
                 endTimer = 67;
                 endMessage = "GAME OVER";
+                deathSound();
                 outputString("GAME", cols/2 - 4, rows/2-3);
                 outputString("OVER", cols/2 - 4, rows/2+3);
                 model->flushOverlayBuffer();
@@ -613,6 +685,7 @@ public:
             GameOn = false;
             endTimer = 67;
             endMessage = "GAME OVER";
+            deathSound();
             outputString("GAME", cols/2 - 4, rows/2-3);
             outputString("OVER", cols/2 - 4, rows/2+3);
             model->flushOverlayBuffer();
@@ -632,6 +705,7 @@ public:
             GameOn = false;
             endTimer = 67;
             endMessage = "YOU WIN";
+            winSound();
             outputString("YOU", cols/2 - 3, rows/2-3);
             outputString("WIN", cols/2 - 3, rows/2+3);
             model->flushOverlayBuffer();
@@ -689,6 +763,10 @@ public:
             } else if (button == "Fire - Pressed") {
                 // toggle pause (don't mark GameOn false which indicates game over)
                 Paused = !Paused;
+                if (Paused) {
+                    stop(MUSIC);
+                    stop(BASS);
+                }
             }
         }
     }

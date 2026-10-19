@@ -1,6 +1,7 @@
 #include <fpp-pch.h>
 
 #include "FPPPong.h"
+#include "FPPArcadeSound.h"
 #include <array>
 #include <cmath>
 
@@ -13,6 +14,14 @@ FPPPong::FPPPong(Json::Value &config) : FPPArcadeGame(config) {
 }
 FPPPong::~FPPPong() {
 }
+
+using namespace ArcadeSound;
+
+// The 1972 arcade cabinet's three sounds: a blip off a paddle, a lower and
+// shorter one off the top or bottom wall, and a long low tone for a point.
+static void paddleSound() { play(FX1, Wave::Square, { tone(490, 40) }); }
+static void wallSound() { play(FX2, Wave::Square, { tone(245, 25) }); }
+static void pointSound() { play(FX1, Wave::Square, { tone(245, 260) }); }
 
 class PongEffect : public FPPArcadeGameEffect {
 public:
@@ -88,6 +97,7 @@ public:
         }
         if (p1Score >= 5 || p2Score >= 5) {
             GameOn = false;
+            play(FX1, Wave::Square, { tone(245, 260), rest(140), tone(245, 260), rest(140), tone(245, 500) });
             outputString("GAME", (cols-8)/ 2, rows/2-6);
             outputString("OVER", (cols-8)/ 2, rows/2);
             model->flushOverlayBuffer();
@@ -124,6 +134,7 @@ public:
              float t = ((ballPosY - racketP1Pos) / racketP1Size) - 0.5f;
              ballDirX = std::fabs(ballDirX);
              ballDirY = t;
+             paddleSound();
              if (racketP1Size > 2) racketP1Size--;
              if ((racketP1Pos + racketP1Size) > rows) {
                  racketP1Pos = rows - racketP1Size;
@@ -137,6 +148,7 @@ public:
              float t = ((ballPosY - racketP2Pos) / racketP2Size) - 0.5f;
              ballDirX = -std::fabs(ballDirX);
              ballDirY = t;
+             paddleSound();
              if (racketP2Size > 2) racketP2Size--;
              if ((racketP2Pos + racketP2Size) > rows) {
                  racketP2Pos = rows - racketP2Size;
@@ -146,6 +158,7 @@ public:
          if (ballPosX < 0) {
              //left wall
              ++p2Score;
+             pointSound();
              if (racketP1Size > 3) racketP1Size -= 2; else racketP1Size = 2;
              if ((racketP1Pos + racketP1Size) > rows) {
                  racketP1Pos = rows - racketP1Size;
@@ -166,6 +179,7 @@ public:
          if (ballPosX >= cols) {
              //right wall
              ++p1Score;
+             pointSound();
              if (racketP2Size > 3) racketP2Size -= 2; else racketP2Size = 2;
              if ((racketP2Pos + racketP2Size) > rows) {
                  racketP2Pos = rows - racketP2Size;
@@ -186,11 +200,13 @@ public:
              //hit bottom
              ballDirY = -std::fabs(ballDirY);
              ballPosY = rows-1;
+             wallSound();
          }
          if (ballPosY < 0) {
              //hit top
              ballDirY = std::fabs(ballDirY);
              ballPosY = 0;
+             wallSound();
          }
 
          // make sure that length of dir stays at 1

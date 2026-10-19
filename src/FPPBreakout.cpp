@@ -1,6 +1,7 @@
 #include <fpp-pch.h>
 
 #include "FPPBreakout.h"
+#include "FPPArcadeSound.h"
 #include <array>
 #include <random>
 
@@ -16,6 +17,17 @@ FPPBreakout::~FPPBreakout() {
 }
 
 
+using namespace ArcadeSound;
+
+// Like the 1976 cabinet: each brick blips at a pitch set by its row, higher
+// toward the top, with a low tick off the paddle and walls.
+static void brickSound(int row) {
+    static const float PITCH[7] = { 1046, 880, 784, 659, 587, 523, 440 };
+    play(FX1, Wave::Square, { tone(PITCH[std::max(0, std::min(6, row))], 45) });
+}
+static void paddleSound() { play(FX2, Wave::Square, { tone(220, 35) }); }
+static void wallSound() { play(FX2, Wave::Square, { tone(330, 20) }); }
+
 class Block {
 public:
     int r = 255;
@@ -26,6 +38,7 @@ public:
     float x = 0;
     float width = 0;
     float height = 0;
+    int row = 0;
     
     float left() const { return x; }
     float top() const { return y; }
@@ -99,6 +112,7 @@ public:
                 b.height = blockH;
                 b.width = blockW;
                 b.y = curY;
+                b.row = y;
                 b.r = (COLORS[y] >> 16) & 0xFF;
                 b.g = (COLORS[y] >> 8) & 0xFF;
                 b.b = COLORS[y] & 0xFF;
@@ -128,14 +142,17 @@ public:
         if (ball.y < 0) {
             ball.directionY = std::fabs(ball.directionY);
             ball.y = 0;
+            wallSound();
         }
         if (ball.x < 0) {
             ball.directionX = std::fabs(ball.directionX);
             ball.x = 0;
+            wallSound();
         }
         if (ball.x >= model->getWidth()) {
             ball.directionX = -std::fabs(ball.directionX);
             ball.x = model->getWidth() - 1;
+            wallSound();
         }
         auto it = blocks.begin();
         while (it != blocks.end()) {
@@ -150,6 +167,7 @@ public:
                     ball.directionY = std::fabs(ball.directionY);
                 }
 
+                brickSound(it->row);
                 blocks.erase(it);
                 return;
             }
@@ -188,6 +206,9 @@ public:
         moveBall();
         
         if (ball.intersects(paddle)) {
+            if (ball.directionY > 0) {
+                paddleSound();
+            }
             float t = ((ball.x - paddle.x) / paddle.width) - 0.5f;
             ball.directionY = -std::fabs(ball.directionY);
             ball.directionX = t;
@@ -200,6 +221,7 @@ public:
         if (ball.y >= model->getHeight()) {
             //end game
             GameOn = false;
+            play(FX1, Wave::Square, { slide(440, 70, 900) });
             float scl = paddle.height;
             outputString("GAME", (model->getWidth()-(8 * scl))/ 2 / scl, (model->getHeight()/2-(6 * scl)) / scl, 255, 255, 255, scl);
             outputString("OVER", (model->getWidth()-(8 * scl))/ 2 / scl, model->getHeight()/2 / scl, 255, 255, 255, scl);
@@ -208,6 +230,7 @@ public:
         }
         if (blocks.empty()) {
             GameOn = false;
+            play(FX1, Wave::Square, tune("C5:16 E5:16 G5:16 C6:4", 140));
             float scl = paddle.height;
             outputString("YOU", (model->getWidth()-(6 * scl))/ 2 / scl, (model->getHeight()/2-(6 * scl)) / scl, 255, 255, 255, scl);
             outputString("WIN", (model->getWidth()-(6 * scl))/ 2 / scl, model->getHeight()/2 / scl, 255, 255, 255, scl);
