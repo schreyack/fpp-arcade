@@ -477,11 +477,11 @@ public:
         
         if (!GameOn && endTimer > 0) {
             if (endMessage == "GAME OVER") {
-                outputString("GAME", cols/2 - 4, rows/2-3);
-                outputString("OVER", cols/2 - 4, rows/2+3);
+                outputString("GAME", cols/2 - 7, rows/2-3);
+                outputString("OVER", cols/2 - 7, rows/2+3);
             } else if (endMessage == "YOU WIN") {
-                outputString("YOU", cols/2 - 3, rows/2-3);
-                outputString("WIN", cols/2 - 3, rows/2+3);
+                outputString("YOU", cols/2 - 5, rows/2-3);
+                outputString("WIN", cols/2 - 5, rows/2+3);
             }
         }
         
@@ -674,8 +674,8 @@ public:
                 endTimer = 67;
                 endMessage = "GAME OVER";
                 deathSound();
-                outputString("GAME", cols/2 - 4, rows/2-3);
-                outputString("OVER", cols/2 - 4, rows/2+3);
+                outputString("GAME", cols/2 - 7, rows/2-3);
+                outputString("OVER", cols/2 - 7, rows/2+3);
                 model->flushOverlayBuffer();
                 return timer;
             }
@@ -686,8 +686,8 @@ public:
             endTimer = 67;
             endMessage = "GAME OVER";
             deathSound();
-            outputString("GAME", cols/2 - 4, rows/2-3);
-            outputString("OVER", cols/2 - 4, rows/2+3);
+            outputString("GAME", cols/2 - 7, rows/2-3);
+            outputString("OVER", cols/2 - 7, rows/2+3);
             model->flushOverlayBuffer();
             return timer;
         }
@@ -706,8 +706,8 @@ public:
             endTimer = 67;
             endMessage = "YOU WIN";
             winSound();
-            outputString("YOU", cols/2 - 3, rows/2-3);
-            outputString("WIN", cols/2 - 3, rows/2+3);
+            outputString("YOU", cols/2 - 5, rows/2-3);
+            outputString("WIN", cols/2 - 5, rows/2+3);
             model->flushOverlayBuffer();
             return timer;
         }

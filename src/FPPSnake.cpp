@@ -105,6 +105,7 @@ public:
     }
     
     void moveSnake() {
+        moved = direction;
         int x = snake.front().first;
         int y = snake.front().second;
         switch (direction) {
@@ -186,14 +187,20 @@ public:
             button = butt.substr(0, pos);
             joystickName = butt.substr(pos+1);
         }
+        int d = -1;
         if (button == "Left - Pressed") {
-            direction = 0;
+            d = 0;
         } else if (button == "Right - Pressed") {
-            direction = 2;
+            d = 2;
         } else if (button == "Up - Pressed") {
-            direction = 1;
+            d = 1;
         } else if (button == "Down - Pressed") {
-            direction = 3;
+            d = 3;
+        }
+        // Never straight back into the neck: judged against the way the
+        // snake last moved, so two quick presses can't turn it around either.
+        if (d != -1 && d != (moved + 2) % 4) {
+            direction = d;
         }
     }
     
@@ -201,6 +208,7 @@ public:
     std::list<std::pair<int, int>> food;
     std::list<std::pair<int, int>> snake;
     int direction = 0;
+    int moved = 0;  // the direction of the last step taken
 
     int rows = 20;
     int cols = 20;

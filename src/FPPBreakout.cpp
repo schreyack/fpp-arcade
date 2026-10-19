@@ -223,8 +223,8 @@ public:
             GameOn = false;
             play(FX1, Wave::Square, { slide(440, 70, 900) });
             float scl = paddle.height;
-            outputString("GAME", (model->getWidth()-(8 * scl))/ 2 / scl, (model->getHeight()/2-(6 * scl)) / scl, 255, 255, 255, scl);
-            outputString("OVER", (model->getWidth()-(8 * scl))/ 2 / scl, model->getHeight()/2 / scl, 255, 255, 255, scl);
+            outputString("GAME", (model->getWidth()-(15 * scl))/ 2 / scl, (model->getHeight()/2-(6 * scl)) / scl, 255, 255, 255, scl);
+            outputString("OVER", (model->getWidth()-(15 * scl))/ 2 / scl, model->getHeight()/2 / scl, 255, 255, 255, scl);
             model->flushOverlayBuffer();
             return 2000;
         }
@@ -232,8 +232,8 @@ public:
             GameOn = false;
             play(FX1, Wave::Square, tune("C5:16 E5:16 G5:16 C6:4", 140));
             float scl = paddle.height;
-            outputString("YOU", (model->getWidth()-(6 * scl))/ 2 / scl, (model->getHeight()/2-(6 * scl)) / scl, 255, 255, 255, scl);
-            outputString("WIN", (model->getWidth()-(6 * scl))/ 2 / scl, model->getHeight()/2 / scl, 255, 255, 255, scl);
+            outputString("YOU", (model->getWidth()-(11 * scl))/ 2 / scl, (model->getHeight()/2-(6 * scl)) / scl, 255, 255, 255, scl);
+            outputString("WIN", (model->getWidth()-(11 * scl))/ 2 / scl, model->getHeight()/2 / scl, 255, 255, 255, scl);
             model->flushOverlayBuffer();
             return 2000;
         }
