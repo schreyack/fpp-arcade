@@ -41,8 +41,7 @@ public:
         offsetX = 0;
         offsetY = 0;
         
-        ballPosX = cols / 2;
-        ballPosY = rows / 2;
+        serve(1);
     }
     ~PongEffect() {
     }
@@ -78,8 +77,46 @@ public:
         return NAME;
     }
 
+    // From the middle toward 'dir' (-1 left, 1 right), at an angle, at the
+    // starting speed.
+    void serve(int dir) {
+        ballPosX = cols / 2;
+        ballPosY = rows / 2;
+        ballSpeed = 1;
+        ballDirX = dir;
+        float angle = 0.25f + (std::rand() % 30) / 100.0f;
+        ballDirY = std::rand() % 2 ? angle : -angle;
+        vec2_norm(ballDirX, ballDirY);
+    }
+
+    // The computer plays the right paddle until a second player moves it:
+    // it follows the ball coming its way, aiming a little off so it can be
+    // beaten, and a touch slower than the ball at full speed.
+    void computerPaddle() {
+        float center = racketP2Pos + racketP2Size / 2.0f;
+        float target = ballDirX > 0 ? ballPosY + aiAim : rows / 2.0f;
+        racketP2Speed = 0;
+        if (aiTick++ % 4 == 3) {
+            return;
+        }
+        if (target < center - 1) {
+            racketP2Speed = -1;
+        } else if (target > center + 1) {
+            racketP2Speed = 1;
+        }
+    }
+
+    // Each return speeds the ball up a little, as in the arcade game.
+    void returned() {
+        paddleSound();
+        ballSpeed = std::min(1.8f, ballSpeed + 0.1f);
+    }
+
     virtual int32_t update() override {
         if (GameOn) {
+            if (!p2Human) {
+                computerPaddle();
+            }
             moveRackets();
             moveBall();
         }
@@ -98,8 +135,8 @@ public:
         if (p1Score >= 5 || p2Score >= 5) {
             GameOn = false;
             play(FX1, Wave::Square, { tone(245, 260), rest(140), tone(245, 260), rest(140), tone(245, 500) });
-            outputString("GAME", (cols-8)/ 2, rows/2-6);
-            outputString("OVER", (cols-8)/ 2, rows/2);
+            outputString("GAME", (cols-15)/ 2, rows/2-6);
+            outputString("OVER", (cols-15)/ 2, rows/2);
             model->flushOverlayBuffer();
             return 2000;
         }
@@ -134,11 +171,9 @@ public:
              float t = ((ballPosY - racketP1Pos) / racketP1Size) - 0.5f;
              ballDirX = std::fabs(ballDirX);
              ballDirY = t;
-             paddleSound();
-             if (racketP1Size > 2) racketP1Size--;
-             if ((racketP1Pos + racketP1Size) > rows) {
-                 racketP1Pos = rows - racketP1Size;
-             }
+             returned();
+             // Where the computer will aim for this one.
+             aiAim = (std::rand() % (racketP2Size + 1)) - racketP2Size / 2.0f;
          }         // hit by right racket?
          if (ballPosX >= (cols-2) &&
              ballPosY <= (racketP2Pos + racketP2Size) &&
@@ -148,31 +183,14 @@ public:
              float t = ((ballPosY - racketP2Pos) / racketP2Size) - 0.5f;
              ballDirX = -std::fabs(ballDirX);
              ballDirY = t;
-             paddleSound();
-             if (racketP2Size > 2) racketP2Size--;
-             if ((racketP2Pos + racketP2Size) > rows) {
-                 racketP2Pos = rows - racketP2Size;
-             }
+             returned();
          }
 
          if (ballPosX < 0) {
              //left wall
              ++p2Score;
              pointSound();
-             if (racketP1Size > 3) racketP1Size -= 2; else racketP1Size = 2;
-             if ((racketP1Pos + racketP1Size) > rows) {
-                 racketP1Pos = rows - racketP1Size;
-             }
-             if (racketP2Size < initialRacketSize) {
-                 racketP2Size++;
-                 if ((racketP2Pos + racketP2Size) > rows) {
-                     racketP2Pos = rows - racketP2Size;
-                 }
-             }
-             ballPosX = cols / 2;
-             ballPosY = rows / 2;
-             ballDirX = std::fabs(ballDirX);
-             ballDirY = 0;
+             serve(-1);  // toward the player who missed
          }
 
          // hit right wall?
@@ -180,20 +198,7 @@ public:
              //right wall
              ++p1Score;
              pointSound();
-             if (racketP2Size > 3) racketP2Size -= 2; else racketP2Size = 2;
-             if ((racketP2Pos + racketP2Size) > rows) {
-                 racketP2Pos = rows - racketP2Size;
-             }
-             if (racketP1Size < initialRacketSize) {
-                 racketP1Size++;
-                 if ((racketP1Pos + racketP1Size) > rows) {
-                     racketP1Pos = rows - racketP1Size;
-                 }
-             }
-             ballPosX = cols / 2;
-             ballPosY = rows / 2;
-             ballDirX = -std::fabs(ballDirX);
-             ballDirY = 0;
+             serve(1);
          }
 
          if (ballPosY >= rows) {
@@ -233,11 +238,11 @@ public:
         if (controls == 4){
             if (joystickName.ends_with("2")){
                 if (button == "Up - Pressed") {
-                    racketP2Speed = -1;
+                    racketP2Speed = -1; p2Human = true;
                 } else if (button == "Down - Pressed") {
-                    racketP2Speed = 1;
+                    racketP2Speed = 1; p2Human = true;
                 } else if (button == "Down - Released" || button == "Up - Released") {
-                    racketP2Speed = 0;
+                    racketP2Speed = 0; p2Human = true;
                 }
             } else {
                 if (button == "Up - Pressed") {
@@ -250,11 +255,11 @@ public:
             }
         } else if (controls == 2) {
             if (button == "Up/Right - Pressed") {
-                racketP2Speed = -1;
+                racketP2Speed = -1; p2Human = true;
             } else if (button == "Down/Right - Pressed") {
-                racketP2Speed = 1;
+                racketP2Speed = 1; p2Human = true;
             } else if (button == "Up/Right - Released" || button == "Down/Right - Released") {
-                racketP2Speed = 0;
+                racketP2Speed = 0; p2Human = true;
             } else if (button == "Up/Left - Pressed") {
                 racketP1Speed = -1;
             } else if (button == "Down/Left - Pressed") {
@@ -264,11 +269,11 @@ public:
             }
         } else if (controls == 3) {
             if (button == "Right - Pressed") {
-                racketP2Speed = -1;
+                racketP2Speed = -1; p2Human = true;
             } else if (button == "Down - Pressed") {
-                racketP2Speed = 1;
+                racketP2Speed = 1; p2Human = true;
             } else if (button == "Right - Released" || button == "Down - Released") {
-                racketP2Speed = 0;
+                racketP2Speed = 0; p2Human = true;
             } else if (button == "Up - Pressed") {
                 racketP1Speed = -1;
             } else if (button == "Left - Pressed") {
@@ -278,11 +283,11 @@ public:
             }
         } else {
             if (button == "Left - Pressed") {
-                racketP2Speed = -1;
+                racketP2Speed = -1; p2Human = true;
             } else if (button == "Right - Pressed") {
-                racketP2Speed = 1;
+                racketP2Speed = 1; p2Human = true;
             } else if (button == "Right - Released" || button == "Left - Released") {
-                racketP2Speed = 0;
+                racketP2Speed = 0; p2Human = true;
             } else if (button == "Up - Pressed") {
                 racketP1Speed = -1;
             } else if (button == "Down - Pressed") {
@@ -314,6 +319,9 @@ public:
     float ballDirX = 1;
     float ballDirY = 0;
     float ballSpeed = 1;
+    bool p2Human = false;   // a second player has moved the right paddle
+    float aiAim = 0;
+    int aiTick = 0;
 
     
     bool GameOn = true;

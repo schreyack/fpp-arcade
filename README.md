@@ -11,11 +11,15 @@ the games.
 
 | Game | Input used |
 |------|-----------|
-| **Tetris** | The four directional "Pressed" events. "Up" rotates the block. |
-| **Pong** | Both "Pressed" and "Released" for all four directions. Player one uses Up/Down, player two uses Left/Right. The **Multi-Player** control mode instead gives each USB controller its own paddle: both players use Up/Down on their own gamepad. |
-| **Snake** | The four directional "Pressed" events. |
-| **Breakout** | Directional "Pressed"/"Released" events. |
-| **Pacman** | The four directional "Pressed" events. A second controller can drive a ghost. |
+| **Tetris** | The four directional "Pressed" events. "Up" rotates the block. The "Pieces fall" option turns the board on its side (right to left or left to right); the D-pad turns with it: the falling direction drops, the opposite one rotates, the other two slide the piece. The theme speeds up with the drop. |
+| **Pong** | Both "Pressed" and "Released" for all four directions. Player one uses Up/Down, player two uses Left/Right. The **Multi-Player** control mode instead gives each USB controller its own paddle: both players use Up/Down on their own gamepad. Until a second player moves the right paddle, the computer plays it. The ball speeds up with every return and each serve goes at an angle toward whoever lost the point. |
+| **Snake** | The four directional "Pressed" events. A press straight back is ignored. The snake speeds up a little with every bite. |
+| **Breakout** | Directional "Pressed"/"Released" events. Three balls a game; the ball speeds up after the 4th and 12th hits and on reaching the top rows. |
+| **Pacman** | The four directional "Pressed" events; a turn pressed early waits for the corridor. A maze sized for a 60x30 matrix (scaled up and centered on bigger models), three lives, and power pellets that turn the ghosts blue so Pac-Man can eat them. A second controller can drive the cyan ghost; until then it chases on its own. |
+
+Every game has retro sounds made in code, played on FPP's audio output next
+to the show. The settings page turns them on or off and sets how loud they
+are; it never changes the system volume.
 
 ## Menu
 

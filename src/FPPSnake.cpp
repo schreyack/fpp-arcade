@@ -141,6 +141,8 @@ public:
             food.remove({x, y});
             addFood();
             eatSound();
+            // A little faster with every bite.
+            timer = std::max(55LL, timer - 3);
         }
         snake.push_front({x, y});
         if (x == 0 || y == 0 || x == (cols-1) || y == (rows-1)) {
@@ -166,11 +168,12 @@ public:
         if (!GameOn) {
             GameOn = false;
             crashSound();
-            outputString("GAME", cols/ 2 - 8, rows/2-9);
-            outputString("OVER", cols/ 2 - 8, rows/2-3);
-            char buf[25];
-            snprintf(buf, sizeof(buf), "%u", (uint32_t)snake.size());
-            outputString(buf, (cols)/ 2 - 4, rows/2+3);
+            // In model pixels, so it reads the same at any Pixel Scaling.
+            int w = model->getWidth(), h = model->getHeight();
+            std::string length = std::to_string(snake.size());
+            outputString("GAME", (w - 15) / 2, h / 2 - 9, 255, 255, 255, 1);
+            outputString("OVER", (w - 15) / 2, h / 2 - 3, 255, 255, 255, 1);
+            outputString(length, (w - ((int)length.size() * 4 - 1)) / 2, h / 2 + 3, 255, 255, 255, 1);
             model->flushOverlayBuffer();
             return 2000;
         }

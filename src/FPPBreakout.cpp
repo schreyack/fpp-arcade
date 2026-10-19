@@ -125,7 +125,37 @@ public:
         ball.height = paddle.height;
         ball.width = paddle.height;
         ball.speed *= (float)paddle.height;
+        baseSpeed = ball.speed;
         CopyToModel();
+    }
+
+    // A black patch for the end message, so it reads over the bricks.
+    void clearBehindText(float scl) {
+        int w = model->getWidth(), h = model->getHeight();
+        for (int y = h / 2 - 7 * scl; y < h / 2 + 6 * scl; y++) {
+            for (int x = (w - 17 * scl) / 2; x < (w + 17 * scl) / 2; x++) {
+                model->setOverlayPixelValue(x, y, 0, 0, 0);
+            }
+        }
+    }
+
+    // A new ball off the paddle, heading up at an angle, so the player is
+    // never left too far away to reach it.
+    void serveBall() {
+        ball.x = paddle.x + paddle.width / 2;
+        ball.y = paddle.y - 2 * ball.height;
+        ball.directionX = (std::rand() % 2 ? 1 : -1) * (0.25f + (std::rand() % 25) / 100.0f);
+        ball.directionY = -0.75f;
+        vec2_norm(ball.directionX, ball.directionY);
+    }
+
+    // As in the arcade game, the ball speeds up after the 4th and 12th
+    // hits and the first time it breaks into the top rows.
+    void brickHit(int row) {
+        hits++;
+        topRow = std::min(topRow, row);
+        int level = (hits >= 4) + (hits >= 12) + (topRow <= 3) + (topRow <= 1);
+        ball.speed = baseSpeed * (1.0f + 0.15f * level);
     }
     ~BreakoutEffect() {
     }
@@ -168,6 +198,7 @@ public:
                 }
 
                 brickSound(it->row);
+                brickHit(it->row);
                 blocks.erase(it);
                 return;
             }
@@ -182,6 +213,10 @@ public:
         }
         paddle.draw(model);
         ball.draw(model);
+        // Spare balls, as dots in the top corner.
+        for (int b = 0; b < balls - 1; b++) {
+            model->setOverlayPixelValue(b * 2, 0, 255, 255, 255);
+        }
         model->flushOverlayBuffer();
     }
     
@@ -218,11 +253,19 @@ public:
         vec2_norm(ball.directionX, ball.directionY);
 
         CopyToModel();
+        if (ball.y >= model->getHeight() && --balls > 0) {
+            // Lost one: a moment's pause, then the next ball.
+            play(FX1, Wave::Square, { slide(440, 150, 400) });
+            serveBall();
+            CopyToModel();
+            return 1000;
+        }
         if (ball.y >= model->getHeight()) {
             //end game
             GameOn = false;
             play(FX1, Wave::Square, { slide(440, 70, 900) });
             float scl = paddle.height;
+            clearBehindText(scl);
             outputString("GAME", (model->getWidth()-(15 * scl))/ 2 / scl, (model->getHeight()/2-(6 * scl)) / scl, 255, 255, 255, scl);
             outputString("OVER", (model->getWidth()-(15 * scl))/ 2 / scl, model->getHeight()/2 / scl, 255, 255, 255, scl);
             model->flushOverlayBuffer();
@@ -232,6 +275,7 @@ public:
             GameOn = false;
             play(FX1, Wave::Square, tune("C5:16 E5:16 G5:16 C6:4", 140));
             float scl = paddle.height;
+            clearBehindText(scl);
             outputString("YOU", (model->getWidth()-(11 * scl))/ 2 / scl, (model->getHeight()/2-(6 * scl)) / scl, 255, 255, 255, scl);
             outputString("WIN", (model->getWidth()-(11 * scl))/ 2 / scl, model->getHeight()/2 / scl, 255, 255, 255, scl);
             model->flushOverlayBuffer();
@@ -273,6 +317,10 @@ public:
     std::list<Block> blocks;
     
     int direction = 0;
+    int balls = 3;
+    int hits = 0;
+    int topRow = 99;      // the highest brick row hit so far (0 is the top)
+    float baseSpeed = 1;
     
     bool GameOn = true;
     bool WaitingUntilOutput = false;
