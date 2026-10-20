@@ -40,10 +40,18 @@ const std::vector<FPPArcadeMenu::Item> &FPPArcadeMenu::itemsFor(Screen s) const 
 std::optional<FPPArcadeMenu::Item> FPPArcadeMenu::press(const std::string &button) {
     lastInput = std::chrono::steady_clock::now();
     if (screen == READY) {
-        // Any press at all starts the waiting game.
-        closing = true;
-        coinSound();
-        return ready;
+        // Only Start or Fire starts the waiting game, so a stray D-pad press
+        // can't; Select goes back to the list.
+        if (button == "Start" || button == "Fire") {
+            closing = true;
+            coinSound();
+            return ready;
+        }
+        if (button == "Select") {
+            screen = GAMES;
+            backBlip();
+        }
+        return std::nullopt;
     }
     int count = screen == TOP ? 2 : (int)itemsFor(screen).size();
     if (button == "Up" || button == "Down") {
@@ -148,8 +156,8 @@ void FPPArcadeMenu::drawReady() {
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
     if ((ms / 600) % 2 == 0) {
-        outputString("PRESS A BUTTON", centered("PRESS A BUTTON"), rows / 2 - 2, PICK_R, PICK_G, PICK_B, 1);
-        outputString("TO START", centered("TO START"), rows / 2 + 4, PICK_R, PICK_G, PICK_B, 1);
+        outputString("PRESS", centered("PRESS"), rows / 2 - 2, PICK_R, PICK_G, PICK_B, 1);
+        outputString("START", centered("START"), rows / 2 + 4, PICK_R, PICK_G, PICK_B, 1);
     }
 }
 

@@ -11,8 +11,9 @@
 //
 // Screen one offers PLAY and DANCE; PLAY lists the model's games and DANCE
 // lists the "Dance - <name>" playlists. Up/Down move the highlight, Start or
-// Fire picks, Select goes back a screen. A picked game waits on a "press a
-// button to start" screen so it does not start until the player is ready.
+// Fire picks, Select goes back a screen. A picked game waits on a "press
+// start" screen so it does not start until the player is ready; only Start
+// or Fire starts it.
 // The menu closes itself after MENU_IDLE_SECONDS without input, handing the
 // model back to the show.
 class FPPArcadeMenu : public FPPArcadeGameEffect {
